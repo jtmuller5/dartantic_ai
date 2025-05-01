@@ -1,9 +1,10 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, unreachable_from_main
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
-  await helloWorldExample(GeminiConfig(model: 'gemini-2.0-flash'));
+  await helloWorldExample(GeminiConfig());
+  await helloWorldExample(OpenAiConfig());
   // await helloWorldExample(OpenAiConfig(model: 'gemini-2.0-flash'));
   // await helloWorldExample();
   // await toolsAndDependencyInjectionExample();
