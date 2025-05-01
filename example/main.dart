@@ -1,25 +1,19 @@
 // ignore_for_file: avoid_print
 
-import 'dart:io';
-
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
-  await helloWorldExample();
+  await helloWorldExample(GeminiConfig(model: 'gemini-2.0-flash'));
+  // await helloWorldExample(OpenAiConfig(model: 'gemini-2.0-flash'));
+  // await helloWorldExample();
+  // await toolsAndDependencyInjectionExample();
+  // await modelExample();
 }
 
-String getEnv(String key) {
-  final value = Platform.environment[key];
-  if (value == null || value.isEmpty) {
-    throw Exception('Environment variable $key is not set');
-  }
-  return value;
-}
-
-Future<void> helloWorldExample() async {
-  final agent = GeminiAgent(
-    apiKey: getEnv('GEMINI_API_KEY'),
-    model: 'gemini-2.0-flash',
+Future<void> helloWorldExample(ModelConfig modelConfig) async {
+  print('helloWorldExample: ${modelConfig.displayName}');
+  final agent = Agent(
+    modelConfig: modelConfig,
     systemPrompt: 'Be concise, reply with one sentence.',
   );
 
@@ -29,4 +23,17 @@ Future<void> helloWorldExample() async {
 
 Future<void> toolsAndDependencyInjectionExample() async {
   // TODO: https://ai.pydantic.dev/#hello-world-example
+}
+
+class MyModel {
+  MyModel({required this.city, required this.country});
+  final String city;
+  final String country;
+}
+
+Future<void> modelExample() async {
+  // final agent = Agent(model, output_type: MyModel, instrument: true);
+  // final result = await agent.runSync('The windy city in the US of A.');
+  // print(result.output);
+  // print(result.usage());
 }

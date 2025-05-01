@@ -1,1 +1,1 @@
-export 'src/agents/agents.dart';
+export 'src/dartantic_ai.dart';
