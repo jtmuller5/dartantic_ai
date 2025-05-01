@@ -7,7 +7,11 @@ class GeminiAgent extends AgentBase {
     required String apiKey,
     required String model,
     required String systemPrompt,
-  }) : _model = GenerativeModel(model: model, apiKey: apiKey);
+  }) : _model = GenerativeModel(
+         model: model,
+         apiKey: apiKey,
+         systemInstruction: Content.text(systemPrompt),
+       );
 
   final GenerativeModel _model;
 
