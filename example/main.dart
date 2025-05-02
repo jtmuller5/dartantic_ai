@@ -3,8 +3,10 @@
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 void main() async {
-  await helloWorldExample(GeminiConfig());
-  await helloWorldExample(OpenAiConfig());
+  // final modelConfig = GeminiConfig();
+  final modelConfig = OpenAiConfig();
+
+  await helloWorldExample(modelConfig);
   // await helloWorldExample(OpenAiConfig(model: 'gemini-2.0-flash'));
   // await helloWorldExample();
   // await toolsAndDependencyInjectionExample();
