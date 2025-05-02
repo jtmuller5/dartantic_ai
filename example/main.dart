@@ -1,19 +1,22 @@
 // ignore_for_file: avoid_print, unreachable_from_main
 
+import 'dart:io';
+
 import 'package:dartantic_ai/dartantic_ai.dart';
 
-void main() async {
-  // final modelConfig = GeminiConfig();
-  final modelConfig = OpenAiConfig();
+final modelConfig = GeminiConfig();
+// final modelConfig = OpenAiConfig();
 
-  await helloWorldExample(modelConfig);
+void main() async {
+  await helloWorldExample();
   // await helloWorldExample(OpenAiConfig(model: 'gemini-2.0-flash'));
   // await helloWorldExample();
   // await toolsAndDependencyInjectionExample();
   // await modelExample();
+  exit(0);
 }
 
-Future<void> helloWorldExample(ModelConfig modelConfig) async {
+Future<void> helloWorldExample() async {
   print('helloWorldExample: ${modelConfig.displayName}');
   final agent = Agent(
     modelConfig: modelConfig,
