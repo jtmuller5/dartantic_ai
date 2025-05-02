@@ -1,3 +1,4 @@
+import 'package:ack/ack.dart' as ack;
 import 'package:openai_dart/openai_dart.dart';
 
 import '../agent/agent_impl.dart';
@@ -22,17 +23,27 @@ class OpenAiConfig extends ModelConfig {
 }
 
 class _OpenAiModel extends LanguageModel<OpenAiConfig> {
-  _OpenAiModel({required super.modelConfig, this.systemInstructions})
-    : _client = OpenAIClient(apiKey: modelConfig.apiKey);
+  _OpenAiModel({
+    required super.modelConfig,
+    this.systemInstructions,
+    this.outputType,
+  }) : _client = OpenAIClient(apiKey: modelConfig.apiKey);
 
   final OpenAIClient _client;
   final String? systemInstructions;
+  final ack.Schema? outputType;
 
   @override
-  Future<AgentResponse> generate(String prompt) async {
+  Future<AgentResponse> run(String prompt) async {
     final res = await _client.createChatCompletion(
       request: CreateChatCompletionRequest(
         model: ChatCompletionModel.modelId(modelConfig.model),
+        responseFormat:
+            outputType != null
+                ? ResponseFormat.jsonSchema(
+                  jsonSchema: _jsonSchemaFrom(outputType!),
+                )
+                : null,
         messages: [
           if (systemInstructions != null)
             ChatCompletionMessage.system(content: systemInstructions!),
@@ -45,4 +56,7 @@ class _OpenAiModel extends LanguageModel<OpenAiConfig> {
 
     return AgentResponse(output: res.choices.first.message.content ?? '');
   }
+
+  JsonSchemaObject _jsonSchemaFrom(ack.Schema schema) =>
+      ack.OpenApiSchemaConverter(schema: schema).to;
 }

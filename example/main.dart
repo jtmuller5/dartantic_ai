@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:ack/ack.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 final modelConfig = GeminiConfig();
@@ -31,16 +32,26 @@ Future<void> toolsAndDependencyInjectionExample() async {
   // TODO: https://ai.pydantic.dev/#tools-dependency-injection-example
 }
 
-class MyModel {
-  MyModel({required this.city, required this.country});
-  final String city;
-  final String country;
-}
+// class MyModel {
+//   MyModel({required this.city, required this.country});
+//   final String city;
+//   final String country;
+// }
 
-Future<void> modelExample() async {
-  print('modelExample: ${modelConfig.displayName}');
-  // final agent = Agent(model, output_type: MyModel, instrument: true);
-  // final result = await agent.runSync('The windy city in the US of A.');
-  // print(result.output);
-  // print(result.usage());
+Future<void> schemaExample() async {
+  print('schemaExample: ${modelConfig.displayName}');
+
+  final myModelSchema = Ack.object(
+    {'city': Ack.string(), 'country': Ack.string()},
+    required: ['city', 'country'],
+  );
+
+  final agent = Agent(
+    modelConfig: modelConfig,
+    outputType: myModelSchema,
+    instrument: true,
+  );
+
+  final result = await agent.run('The windy city in the US of A.');
+  print(result.output);
 }

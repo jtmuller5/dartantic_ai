@@ -6,5 +6,5 @@ abstract class LanguageModel<T extends ModelConfig> {
 
   final T modelConfig;
 
-  Future<AgentResponse> generate(String prompt);
+  Future<AgentResponse> run(String prompt);
 }

@@ -36,7 +36,7 @@ class _GeminiModel extends LanguageModel<GeminiConfig> {
   final String? systemInstructions;
 
   @override
-  Future<AgentResponse> generate(String prompt) async {
+  Future<AgentResponse> run(String prompt) async {
     final result = await _model.generateContent([Content.text(prompt)]);
     return AgentResponse(output: result.text ?? '');
   }
