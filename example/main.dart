@@ -9,8 +9,6 @@ final modelConfig = GeminiConfig();
 
 void main() async {
   await helloWorldExample();
-  // await helloWorldExample(OpenAiConfig(model: 'gemini-2.0-flash'));
-  // await helloWorldExample();
   // await toolsAndDependencyInjectionExample();
   // await modelExample();
   exit(0);
