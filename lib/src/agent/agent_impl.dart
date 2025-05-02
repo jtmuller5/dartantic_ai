@@ -14,6 +14,6 @@ class Agent {
   final Object? outputType;
   final bool instrument;
 
-  Future<AgentResponse> generate(String prompt) =>
+  Future<AgentResponse> run(String prompt) =>
       modelConfig.languageModelFor(this).generate(prompt);
 }

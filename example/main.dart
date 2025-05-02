@@ -7,6 +7,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 final modelConfig = GeminiConfig();
 // final modelConfig = OpenAiConfig();
 
+// from https://ai.pydantic.dev/
 void main() async {
   await helloWorldExample();
   // await toolsAndDependencyInjectionExample();
@@ -21,12 +22,13 @@ Future<void> helloWorldExample() async {
     systemPrompt: 'Be concise, reply with one sentence.',
   );
 
-  final result = await agent.generate('Where does "hello world" come from?');
+  final result = await agent.run('Where does "hello world" come from?');
   print(result.output);
 }
 
 Future<void> toolsAndDependencyInjectionExample() async {
-  // TODO: https://ai.pydantic.dev/#hello-world-example
+  print('toolsAndDependencyInjectionExample: ${modelConfig.displayName}');
+  // TODO: https://ai.pydantic.dev/#tools-dependency-injection-example
 }
 
 class MyModel {
@@ -36,6 +38,7 @@ class MyModel {
 }
 
 Future<void> modelExample() async {
+  print('modelExample: ${modelConfig.displayName}');
   // final agent = Agent(model, output_type: MyModel, instrument: true);
   // final result = await agent.runSync('The windy city in the US of A.');
   // print(result.output);

@@ -10,6 +10,7 @@ The following are the target features for this package:
 - [ ] Chains and Sequential Execution
 - [ ] JSON Mode, Functions Mode, Flexible Decoding
 - [ ] Simple Assistant/Agent loop utilities
+- [ ] Per call usage statistics
 
 ## Getting started
 TBD
