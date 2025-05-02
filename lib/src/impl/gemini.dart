@@ -22,7 +22,7 @@ class GeminiConfig extends ModelConfig {
 }
 
 class _GeminiModel extends LanguageModel<GeminiConfig> {
-  _GeminiModel({required super.modelConfig, this.systemInstructions})
+  _GeminiModel({required super.modelConfig, required this.systemInstructions})
     : _model = GenerativeModel(
         model: modelConfig.model,
         apiKey: modelConfig.apiKey,

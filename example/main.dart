@@ -5,14 +5,14 @@ import 'dart:io';
 import 'package:ack/ack.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
 
-final modelConfig = GeminiConfig();
-// final modelConfig = OpenAiConfig();
+// final modelConfig = GeminiConfig();
+final modelConfig = OpenAiConfig();
 
 // from https://ai.pydantic.dev/
 void main() async {
-  await helloWorldExample();
+  // await helloWorldExample();
   // await toolsAndDependencyInjectionExample();
-  // await modelExample();
+  await schemaExample();
   exit(0);
 }
 

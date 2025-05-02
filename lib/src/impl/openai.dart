@@ -15,8 +15,11 @@ class OpenAiConfig extends ModelConfig {
   final String apiKey;
 
   @override
-  LanguageModel<ModelConfig> languageModelFor(Agent agent) =>
-      _OpenAiModel(modelConfig: this, systemInstructions: agent.systemPrompt);
+  LanguageModel<ModelConfig> languageModelFor(Agent agent) => _OpenAiModel(
+    modelConfig: this,
+    systemInstructions: agent.systemPrompt,
+    outputType: agent.outputType,
+  );
 
   @override
   String get displayName => 'OpenAI $model';
@@ -25,8 +28,8 @@ class OpenAiConfig extends ModelConfig {
 class _OpenAiModel extends LanguageModel<OpenAiConfig> {
   _OpenAiModel({
     required super.modelConfig,
-    this.systemInstructions,
-    this.outputType,
+    required this.systemInstructions,
+    required this.outputType,
   }) : _client = OpenAIClient(apiKey: modelConfig.apiKey);
 
   final OpenAIClient _client;
@@ -57,6 +60,18 @@ class _OpenAiModel extends LanguageModel<OpenAiConfig> {
     return AgentResponse(output: res.choices.first.message.content ?? '');
   }
 
-  JsonSchemaObject _jsonSchemaFrom(ack.Schema schema) =>
-      ack.OpenApiSchemaConverter(schema: schema).to;
+  JsonSchemaObject _jsonSchemaFrom(
+    ack.Schema schema, {
+    String name = 'response',
+    bool strict = false,
+  }) {
+    final Map<String, dynamic> json = schema.toMap();
+    final desc = schema.getDescriptionValue();
+    return JsonSchemaObject(
+      name: name,
+      description: desc.isEmpty ? null : desc,
+      schema: json,
+      strict: strict,
+    );
+  }
 }
