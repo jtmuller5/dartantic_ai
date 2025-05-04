@@ -1,6 +1,5 @@
 // ignore_for_file: avoid_print, unreachable_from_main
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:ack/ack.dart';
@@ -16,14 +15,14 @@ final modelConfig = OpenAiConfig();
 void main() async {
   // await helloWorldExample();
   // await toolsAndDependencyInjectionExample();
-  // await outputTypeExampleWithAck();
+  await outputTypeExampleWithAck();
   await outputTypeExampleWithJsonSchema();
   // await outputTypeExampleWithSotiSchema();
   exit(0);
 }
 
 Future<void> helloWorldExample() async {
-  print('helloWorldExample: ${modelConfig.displayName}');
+  print('\nhelloWorldExample: ${modelConfig.displayName}');
   final agent = Agent(
     modelConfig: modelConfig,
     systemPrompt: 'Be concise, reply with one sentence.',
@@ -55,7 +54,7 @@ class MyModel {
 }
 
 Future<void> outputTypeExampleWithAck() async {
-  print('schemaExampleWithAck: ${modelConfig.displayName}');
+  print('\nschemaExampleWithAck: ${modelConfig.displayName}');
 
   final myModelSchema = Ack.object(
     {'city': Ack.string(), 'country': Ack.string()},
@@ -65,16 +64,16 @@ Future<void> outputTypeExampleWithAck() async {
   final agent = Agent(
     modelConfig: modelConfig,
     outputType: myModelSchema.toMap(),
+    outputFromJson: MyModel.fromJson,
     instrument: true,
   );
 
-  final result = await agent.run('The windy city in the US of A.');
+  final result = await agent.runFor<MyModel>('The windy city in the US of A.');
   print(result.output);
-  print(MyModel.fromJson(jsonDecode(result.output)));
 }
 
 Future<void> outputTypeExampleWithJsonSchema() async {
-  print('schemaExampleWithJsonSchema: ${modelConfig.displayName}');
+  print('\nschemaExampleWithJsonSchema: ${modelConfig.displayName}');
 
   final myModelSchema = {
     'type': 'object',
@@ -89,16 +88,16 @@ Future<void> outputTypeExampleWithJsonSchema() async {
   final agent = Agent(
     modelConfig: modelConfig,
     outputType: myModelSchema,
+    outputFromJson: MyModel.fromJson,
     instrument: true,
   );
 
-  final result = await agent.run('The windy city in the US of A.');
+  final result = await agent.runFor<MyModel>('The windy city in the US of A.');
   print(result.output);
-  print(MyModel.fromJson(jsonDecode(result.output)));
 }
 
 // Future<void> outputTypeExampleWithSotiSchema() async {
-//   print('schemaExampleWithSotiSchema: ${modelConfig.displayName}');
+//   print('\nschemaExampleWithSotiSchema: ${modelConfig.displayName}');
 
 //   final agent = Agent(
 //     modelConfig: modelConfig,
@@ -108,4 +107,5 @@ Future<void> outputTypeExampleWithJsonSchema() async {
 
 //   final result = await agent.run('The windy city in the US of A.');
 //   print(result.output);
+//   print('');
 // }
