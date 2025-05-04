@@ -1,5 +1,3 @@
-import 'package:ack/ack.dart' as ack;
-
 import '../model/model_config.dart';
 import 'agent_response.dart';
 
@@ -13,7 +11,7 @@ class Agent {
 
   final ModelConfig modelConfig;
   final String? systemPrompt;
-  final ack.Schema? outputType;
+  final Map<String, dynamic>? outputType;
   final bool instrument;
 
   Future<AgentResponse> run(String prompt) =>

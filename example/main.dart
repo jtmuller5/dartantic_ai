@@ -12,7 +12,9 @@ final modelConfig = OpenAiConfig();
 void main() async {
   // await helloWorldExample();
   // await toolsAndDependencyInjectionExample();
-  await schemaExample();
+  // await outputTypeExampleWithAck();
+  await outputTypeExampleWithJsonSchema();
+  // await outputTypeExampleWithSotiSchema();
   exit(0);
 }
 
@@ -32,19 +34,38 @@ Future<void> toolsAndDependencyInjectionExample() async {
   // TODO: https://ai.pydantic.dev/#tools-dependency-injection-example
 }
 
-// class MyModel {
-//   MyModel({required this.city, required this.country});
-//   final String city;
-//   final String country;
-// }
-
-Future<void> schemaExample() async {
-  print('schemaExample: ${modelConfig.displayName}');
+Future<void> outputTypeExampleWithAck() async {
+  print('schemaExampleWithAck: ${modelConfig.displayName}');
 
   final myModelSchema = Ack.object(
     {'city': Ack.string(), 'country': Ack.string()},
     required: ['city', 'country'],
   );
+
+  print(myModelSchema.toMap());
+
+  final agent = Agent(
+    modelConfig: modelConfig,
+    outputType: myModelSchema.toMap(),
+    instrument: true,
+  );
+
+  final result = await agent.run('The windy city in the US of A.');
+  print(result.output);
+}
+
+Future<void> outputTypeExampleWithJsonSchema() async {
+  print('schemaExampleWithJsonSchema: ${modelConfig.displayName}');
+
+  final myModelSchema = {
+    'type': 'object',
+    'properties': {
+      'city': {'type': 'string'},
+      'country': {'type': 'string'},
+    },
+    'required': ['city', 'country'],
+    'additionalProperties': false,
+  };
 
   final agent = Agent(
     modelConfig: modelConfig,
@@ -55,3 +76,27 @@ Future<void> schemaExample() async {
   final result = await agent.run('The windy city in the US of A.');
   print(result.output);
 }
+
+// @JsonSerializable()
+// class MyModel {
+//   MyModel({required this.city, required this.country});
+
+//   factory MyModel.fromJson(Map<String, dynamic> json) =>
+//       _$MyModelFromJson(json);
+//   final String city;
+//   final String country;
+//   Map<String, dynamic> toJson() => _$MyModelToJson(this);
+// }
+
+// Future<void> outputTypeExampleWithSotiSchema() async {
+//   print('schemaExampleWithSotiSchema: ${modelConfig.displayName}');
+
+//   final agent = Agent(
+//     modelConfig: modelConfig,
+//     outputType: myModelSchema,
+//     instrument: true,
+//   );
+
+//   final result = await agent.run('The windy city in the US of A.');
+//   print(result.output);
+// }

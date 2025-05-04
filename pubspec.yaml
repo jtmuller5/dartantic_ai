@@ -7,7 +7,6 @@ environment:
   sdk: ^3.7.2
 
 dependencies:
-  ack: ^0.1.2
   flutter_ai_toolkit: ^0.8.0
   google_generative_ai: ^0.4.7
   openai_dart: ^0.4.5

@@ -1,4 +1,3 @@
-import 'package:ack/ack.dart' as ack;
 import 'package:openai_dart/openai_dart.dart';
 
 import '../agent/agent_impl.dart';
@@ -34,7 +33,7 @@ class _OpenAiModel extends LanguageModel<OpenAiConfig> {
 
   final OpenAIClient _client;
   final String? systemInstructions;
-  final ack.Schema? outputType;
+  final Map<String, dynamic>? outputType;
 
   @override
   Future<AgentResponse> run(String prompt) async {
@@ -44,7 +43,7 @@ class _OpenAiModel extends LanguageModel<OpenAiConfig> {
         responseFormat:
             outputType != null
                 ? ResponseFormat.jsonSchema(
-                  jsonSchema: _jsonSchemaFrom(outputType!),
+                  jsonSchema: _schemaObjectFrom(outputType!),
                 )
                 : null,
         messages: [
@@ -60,18 +59,14 @@ class _OpenAiModel extends LanguageModel<OpenAiConfig> {
     return AgentResponse(output: res.choices.first.message.content ?? '');
   }
 
-  JsonSchemaObject _jsonSchemaFrom(
-    ack.Schema schema, {
+  JsonSchemaObject _schemaObjectFrom(
+    Map<String, dynamic> schema, {
     String name = 'response',
-    bool strict = false,
-  }) {
-    final Map<String, dynamic> json = schema.toMap();
-    final desc = schema.getDescriptionValue();
-    return JsonSchemaObject(
-      name: name,
-      description: desc.isEmpty ? null : desc,
-      schema: json,
-      strict: strict,
-    );
-  }
+    bool strict = true,
+  }) => JsonSchemaObject(
+    name: name,
+    description: schema['description'],
+    schema: schema,
+    strict: strict,
+  );
 }
