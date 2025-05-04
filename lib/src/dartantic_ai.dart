@@ -1,2 +1,2 @@
 export 'agent/agent.dart';
-export 'config/config.dart';
+export 'providers/providers.dart';
