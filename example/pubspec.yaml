@@ -1,0 +1,13 @@
+name: example
+description: An example of using dartantic_ai.
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  ack: ^0.1.2
+  dartantic_ai:
+    path: ..
+
+dev_dependencies:
+  all_lint_rules_community: ^0.0.43
