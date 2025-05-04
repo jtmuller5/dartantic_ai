@@ -1,34 +1,55 @@
 import 'dart:convert';
 
-import '../model/model_config.dart';
+import '../agent_table.dart';
+import '../config/agent_config.dart';
+import '../config/provider_config.dart';
+import '../providers/provider.dart';
 import 'agent_response.dart';
 
 class Agent {
   Agent({
-    required this.modelConfig,
-    this.systemPrompt,
-    this.outputType,
-    this.instrument = false,
-    this.outputFromJson,
-    this.outputToJson,
-  });
+    required ProviderConfig providerConfig,
+    String? systemPrompt,
+    Map<String, dynamic>? outputType,
+    bool instrument = false,
+    dynamic Function(Map<String, dynamic>)? outputFromJson,
+    dynamic Function(dynamic)? outputToJson,
+  }) : _provider = _providerFor(
+         providerConfig,
+         AgentConfig(
+           systemPrompt: systemPrompt,
+           outputType: outputType,
+           instrument: instrument,
+           outputFromJson: outputFromJson,
+           outputToJson: outputToJson,
+         ),
+       );
 
-  final ModelConfig modelConfig;
-  final String? systemPrompt;
-  final Map<String, dynamic>? outputType;
-  final bool instrument;
-  final dynamic Function(Map<String, dynamic>)? outputFromJson;
-  final dynamic Function(dynamic)? outputToJson;
+  final Provider<ProviderConfig> _provider;
 
-  Future<AgentResponse> run(String prompt) =>
-      modelConfig.languageModelFor(this).run(prompt);
+  Future<AgentResponse> run(String prompt) => _provider.run(prompt);
 
   Future<AgentResponseFor<T>> runFor<T>(String prompt) async {
-    final output = await modelConfig.languageModelFor(this).run(prompt);
+    final output = await _provider.run(prompt);
     final outputJson =
-        outputFromJson?.call(jsonDecode(output.output)) ??
+        _provider.agentConfig.outputFromJson?.call(jsonDecode(output.output)) ??
         jsonDecode(output.output);
-    final outputTyped = outputToJson?.call(outputJson) ?? outputJson;
+    final outputTyped =
+        _provider.agentConfig.outputToJson?.call(outputJson) ?? outputJson;
     return AgentResponseFor(output: outputTyped);
   }
+
+  static Provider<ProviderConfig> _providerFor(
+    ProviderConfig providerConfig,
+    AgentConfig agentConfig,
+  ) => agentTable
+      .singleWhere(
+        (info) => info.family == providerConfig.family,
+        orElse:
+            () =>
+                throw ArgumentError(
+                  'Unsupported provider family: ${providerConfig.family}',
+                ),
+      )
+      .providerFactory(agentConfig, providerConfig);
 }

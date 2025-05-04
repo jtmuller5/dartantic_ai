@@ -8,13 +8,13 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'main.g.dart';
 
-// final modelConfig = GeminiConfig();
-final modelConfig = OpenAiConfig();
+// final providerConfig = GeminiConfig();
+final providerConfig = OpenAiConfig();
 
 // from https://ai.pydantic.dev/
 void main() async {
-  // await helloWorldExample();
-  // await toolsAndDependencyInjectionExample();
+  await helloWorldExample();
+  await toolsAndDependencyInjectionExample();
   await outputTypeExampleWithAck();
   await outputTypeExampleWithJsonSchema();
   // await outputTypeExampleWithSotiSchema();
@@ -22,9 +22,9 @@ void main() async {
 }
 
 Future<void> helloWorldExample() async {
-  print('\nhelloWorldExample: ${modelConfig.displayName}');
+  print('\nhelloWorldExample: ${providerConfig.displayName}');
   final agent = Agent(
-    modelConfig: modelConfig,
+    providerConfig: providerConfig,
     systemPrompt: 'Be concise, reply with one sentence.',
   );
 
@@ -33,7 +33,7 @@ Future<void> helloWorldExample() async {
 }
 
 Future<void> toolsAndDependencyInjectionExample() async {
-  print('toolsAndDependencyInjectionExample: ${modelConfig.displayName}');
+  print('toolsAndDependencyInjectionExample: ${providerConfig.displayName}');
   // TODO: https://ai.pydantic.dev/#tools-dependency-injection-example
 }
 
@@ -54,7 +54,7 @@ class MyModel {
 }
 
 Future<void> outputTypeExampleWithAck() async {
-  print('\nschemaExampleWithAck: ${modelConfig.displayName}');
+  print('\nschemaExampleWithAck: ${providerConfig.displayName}');
 
   final myModelSchema = Ack.object(
     {'city': Ack.string(), 'country': Ack.string()},
@@ -62,7 +62,7 @@ Future<void> outputTypeExampleWithAck() async {
   );
 
   final agent = Agent(
-    modelConfig: modelConfig,
+    providerConfig: providerConfig,
     outputType: myModelSchema.toMap(),
     outputFromJson: MyModel.fromJson,
     instrument: true,
@@ -73,7 +73,7 @@ Future<void> outputTypeExampleWithAck() async {
 }
 
 Future<void> outputTypeExampleWithJsonSchema() async {
-  print('\nschemaExampleWithJsonSchema: ${modelConfig.displayName}');
+  print('\nschemaExampleWithJsonSchema: ${providerConfig.displayName}');
 
   final myModelSchema = {
     'type': 'object',
@@ -86,7 +86,7 @@ Future<void> outputTypeExampleWithJsonSchema() async {
   };
 
   final agent = Agent(
-    modelConfig: modelConfig,
+    providerConfig: providerConfig,
     outputType: myModelSchema,
     outputFromJson: MyModel.fromJson,
     instrument: true,

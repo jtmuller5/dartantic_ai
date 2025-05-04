@@ -1,3 +1,2 @@
 export 'agent/agent.dart';
-export 'impl/impl.dart';
-export 'model/model.dart';
+export 'config/config.dart';
