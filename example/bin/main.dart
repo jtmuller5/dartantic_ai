@@ -1,9 +1,13 @@
 // ignore_for_file: avoid_print, unreachable_from_main
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ack/ack.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+part 'main.g.dart';
 
 // final modelConfig = GeminiConfig();
 final modelConfig = OpenAiConfig();
@@ -34,6 +38,22 @@ Future<void> toolsAndDependencyInjectionExample() async {
   // TODO: https://ai.pydantic.dev/#tools-dependency-injection-example
 }
 
+@JsonSerializable()
+class MyModel {
+  MyModel({required this.city, required this.country});
+
+  factory MyModel.fromJson(Map<String, dynamic> json) =>
+      _$MyModelFromJson(json);
+
+  final String city;
+  final String country;
+
+  Map<String, dynamic> toJson() => _$MyModelToJson(this);
+
+  @override
+  String toString() => 'MyModel(city: $city, country: $country)';
+}
+
 Future<void> outputTypeExampleWithAck() async {
   print('schemaExampleWithAck: ${modelConfig.displayName}');
 
@@ -41,8 +61,6 @@ Future<void> outputTypeExampleWithAck() async {
     {'city': Ack.string(), 'country': Ack.string()},
     required: ['city', 'country'],
   );
-
-  print(myModelSchema.toMap());
 
   final agent = Agent(
     modelConfig: modelConfig,
@@ -52,6 +70,7 @@ Future<void> outputTypeExampleWithAck() async {
 
   final result = await agent.run('The windy city in the US of A.');
   print(result.output);
+  print(MyModel.fromJson(jsonDecode(result.output)));
 }
 
 Future<void> outputTypeExampleWithJsonSchema() async {
@@ -75,18 +94,8 @@ Future<void> outputTypeExampleWithJsonSchema() async {
 
   final result = await agent.run('The windy city in the US of A.');
   print(result.output);
+  print(MyModel.fromJson(jsonDecode(result.output)));
 }
-
-// @JsonSerializable()
-// class MyModel {
-//   MyModel({required this.city, required this.country});
-
-//   factory MyModel.fromJson(Map<String, dynamic> json) =>
-//       _$MyModelFromJson(json);
-//   final String city;
-//   final String country;
-//   Map<String, dynamic> toJson() => _$MyModelToJson(this);
-// }
 
 // Future<void> outputTypeExampleWithSotiSchema() async {
 //   print('schemaExampleWithSotiSchema: ${modelConfig.displayName}');

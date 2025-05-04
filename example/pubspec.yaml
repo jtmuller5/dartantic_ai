@@ -1,5 +1,6 @@
 name: example
 description: An example of using dartantic_ai.
+publish_to: none
 
 environment:
   sdk: ^3.7.2
@@ -8,6 +9,9 @@ dependencies:
   ack: ^0.1.2
   dartantic_ai:
     path: ..
+  json_annotation: ^4.9.0
 
 dev_dependencies:
   all_lint_rules_community: ^0.0.43
+  build_runner: ^2.4.15
+  json_serializable: ^6.9.5
