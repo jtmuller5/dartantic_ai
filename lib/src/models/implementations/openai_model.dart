@@ -15,13 +15,19 @@ class OpenAiModel extends Model {
   OpenAiModel({
     required String apiKey,
     required this.modelName,
-    this.outputType,
+    Map<String, dynamic>? outputType,
     this.systemPrompt,
-  }) : _client = OpenAIClient(apiKey: apiKey);
+  }) : _client = OpenAIClient(apiKey: apiKey),
+       responseFormat =
+           outputType != null
+               ? ResponseFormat.jsonSchema(
+                 jsonSchema: _schemaObjectFrom(outputType),
+               )
+               : null;
 
   final String modelName;
   final OpenAIClient _client;
-  final Map<String, dynamic>? outputType;
+  final ResponseFormat? responseFormat;
   final String? systemPrompt;
 
   @override
@@ -29,12 +35,7 @@ class OpenAiModel extends Model {
     final res = await _client.createChatCompletion(
       request: CreateChatCompletionRequest(
         model: ChatCompletionModel.modelId(modelName),
-        responseFormat:
-            outputType != null
-                ? ResponseFormat.jsonSchema(
-                  jsonSchema: _schemaObjectFrom(outputType!),
-                )
-                : null,
+        responseFormat: responseFormat,
         messages: [
           if (systemPrompt != null)
             ChatCompletionMessage.system(content: systemPrompt!),
@@ -48,14 +49,14 @@ class OpenAiModel extends Model {
     return AgentResponse(output: res.choices.first.message.content ?? '');
   }
 
-  JsonSchemaObject _schemaObjectFrom(
-    Map<String, dynamic> schema, {
+  static JsonSchemaObject _schemaObjectFrom(
+    Map<String, dynamic> jsonSchema, {
     String name = 'response',
     bool strict = true,
   }) => JsonSchemaObject(
     name: name,
-    description: schema['description'],
-    schema: schema,
+    description: jsonSchema['description'],
+    schema: jsonSchema,
     strict: strict,
   );
 }
