@@ -1,32 +1,25 @@
-import 'package:openai_dart/openai_dart.dart';
+import 'package:openai_dart/openai_dart.dart'
+    show
+        ChatCompletionMessage,
+        ChatCompletionModel,
+        ChatCompletionUserMessageContent,
+        CreateChatCompletionRequest,
+        JsonSchemaObject,
+        OpenAIClient,
+        ResponseFormat;
 
-import '../../agent/agent_response.dart';
-import '../../platform/platform.dart' as platform;
-import '../interface/provider.dart';
+import '../../agent/agent.dart';
+import '../interface/model.dart';
 
-class OpenAiProvider extends Provider {
-  OpenAiProvider({
-    String? familyName,
-    String? modelName,
-    String? apiKey,
+class OpenAiModel extends Model {
+  OpenAiModel({
+    required String apiKey,
+    required this.modelName,
     this.outputType,
     this.systemPrompt,
-  }) : assert(familyName == null || familyName == openaiFamily),
-       modelName = modelName ?? openaiModelName,
-       _client = OpenAIClient(
-         apiKey: apiKey ?? platform.getEnv(openaiApiKeyName),
-       );
+  }) : _client = OpenAIClient(apiKey: apiKey);
 
-  static const openaiFamily = 'openai';
-  static const openaiModelName = 'gpt-4o';
-  static const openaiApiKeyName = 'OPENAI_API_KEY';
-
-  @override
-  String get familyName => openaiFamily;
-
-  @override
   final String modelName;
-
   final OpenAIClient _client;
   final Map<String, dynamic>? outputType;
   final String? systemPrompt;

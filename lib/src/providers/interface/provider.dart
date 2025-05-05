@@ -1,11 +1,10 @@
-import '../../agent/agent_response.dart';
+import '../../models/interface/model.dart';
+import '../../models/interface/model_settings.dart';
 
 abstract class Provider {
-  String get familyName;
-  String get modelName;
-  String get displayName => '$familyName:$modelName';
+  String get displayName;
 
-  Future<AgentResponse> run(String prompt);
+  Model createModel(ModelSettings settings);
 
   @override
   String toString() => displayName;

@@ -3,26 +3,20 @@ import '../providers.dart';
 class ProviderTable {
   static final providers = <String, ProviderFactory>{
     'openai':
-        (config) => OpenAiProvider(
-          familyName: config.familyName,
-          modelName: config.modelName,
-          apiKey: config.apiKey,
-          outputType: config.outputType,
-          systemPrompt: config.systemPrompt,
+        (settings) => OpenAiProvider(
+          modelName: settings.modelName,
+          apiKey: settings.apiKey,
         ),
     'google-gla':
-        (config) => GeminiProvider(
-          familyName: config.familyName,
-          modelName: config.modelName,
-          apiKey: config.apiKey,
-          outputType: config.outputType,
-          systemPrompt: config.systemPrompt,
+        (settings) => GeminiProvider(
+          modelName: settings.modelName,
+          apiKey: settings.apiKey,
         ),
   };
 
-  static Provider providerFor(ProviderConfig config) {
-    final providerFactory = providers[config.familyName];
-    if (providerFactory != null) return providerFactory(config);
-    throw ArgumentError('Unsupported provider family: $config.family');
+  static Provider providerFor(ProviderSettings settings) {
+    final providerFactory = providers[settings.familyName];
+    if (providerFactory != null) return providerFactory(settings);
+    throw ArgumentError('Unsupported provider family: $settings.family');
   }
 }

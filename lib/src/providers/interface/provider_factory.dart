@@ -1,4 +1,4 @@
 import 'provider.dart';
-import 'provider_config.dart';
+import 'provider_settings.dart';
 
-typedef ProviderFactory = Provider Function(ProviderConfig config);
+typedef ProviderFactory = Provider Function(ProviderSettings settings);

@@ -14,8 +14,8 @@ final provider = GeminiProvider();
 // from https://ai.pydantic.dev/
 void main() async {
   await helloWorldExample();
-  // await outputTypeExampleWithAck();
-  // await outputTypeExampleWithJsonSchema();
+  await outputTypeExampleWithAck();
+  await outputTypeExampleWithJsonSchema();
   // await outputTypeExampleWithSotiSchema();
   exit(0);
 }
@@ -59,7 +59,6 @@ Future<void> outputTypeExampleWithAck() async {
     provider: provider,
     outputType: myModelSchema.toMap(),
     outputFromJson: MyModel.fromJson,
-    instrument: true,
   );
 
   final result = await agent.runFor<MyModel>('The windy city in the US of A.');
@@ -83,7 +82,6 @@ Future<void> outputTypeExampleWithJsonSchema() async {
     provider: provider,
     outputType: myModelSchema,
     outputFromJson: MyModel.fromJson,
-    instrument: true,
   );
 
   final result = await agent.runFor<MyModel>('The windy city in the US of A.');
