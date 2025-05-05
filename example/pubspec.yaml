@@ -10,8 +10,9 @@ dependencies:
   dartantic_ai:
     path: ..
   json_annotation: ^4.9.0
+  soti_schema: ^1.0.0
 
 dev_dependencies:
   all_lint_rules_community: ^0.0.43
   build_runner: ^2.4.15
-  json_serializable: ^6.9.5
+  json_serializable: ^6.9.0

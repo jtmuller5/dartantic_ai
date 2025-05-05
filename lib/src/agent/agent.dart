@@ -16,18 +16,17 @@ class Agent {
     String? systemPrompt,
     Map<String, dynamic>? outputType,
     this.outputFromJson,
-  }) : assert(
-         model != null || provider != null,
-         'Either model or provider must be provided',
-       ),
-       assert(
-         !(model != null && provider != null),
-         'Only one of model or provider can be provided',
-       ),
-       assert(
-         model == null || model.split(':').length == 2,
-         'Model must be in the format "family:model"',
-       ) {
+  }) {
+    if (model == null && provider == null) {
+      throw ArgumentError('Either model or provider must be provided');
+    }
+    if (model != null && provider != null) {
+      throw ArgumentError('Only one of model or provider can be provided');
+    }
+    if (model != null && model.split(':').length != 2) {
+      throw ArgumentError('Model must be in the format "family:model"');
+    }
+
     provider =
         provider ??
         ProviderTable.providerFor(
@@ -37,6 +36,7 @@ class Agent {
             apiKey: null,
           ),
         );
+
     _model = provider.createModel(
       ModelSettings(systemPrompt: systemPrompt, outputType: outputType),
     );

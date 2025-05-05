@@ -56,7 +56,7 @@ class OpenAiModel extends Model {
   }) => JsonSchemaObject(
     name: name,
     description: jsonSchema['description'],
-    schema: jsonSchema,
+    schema: {...jsonSchema, 'additionalProperties': false},
     strict: strict,
   );
 }

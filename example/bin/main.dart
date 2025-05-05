@@ -4,26 +4,33 @@ import 'dart:io';
 
 import 'package:ack/ack.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:example/town_and_country.dart';
 
-part 'main.g.dart';
+// Provider? get provider => GeminiProvider();
+// Provider? get provider => OpenAiProvider();
+Provider? get provider => null;
 
-// final provider = GeminiProvider();
-final provider = OpenAiProvider();
+String? get model => 'google-gla:gemini-1.5-flash';
+// String? get model => 'openai:gpt-4o';
+// String? get model => null;
 
-// from https://ai.pydantic.dev/
+String get displayName => provider?.displayName ?? model ?? 'ERROR';
+
 void main() async {
+  // examples from https://ai.pydantic.dev/
   await helloWorldExample();
   await outputTypeExampleWithAck();
   await outputTypeExampleWithJsonSchema();
-  // await outputTypeExampleWithSotiSchema();
+  await outputTypeExampleWithSotiSchema();
   exit(0);
 }
 
 Future<void> helloWorldExample() async {
-  print('\nhelloWorldExample: ${provider.displayName}');
+  print('\nhelloWorldExample: $displayName');
+
   final agent = Agent(
     provider: provider,
+    model: model,
     systemPrompt: 'Be concise, reply with one sentence.',
   );
 
@@ -31,24 +38,8 @@ Future<void> helloWorldExample() async {
   print(result.output);
 }
 
-@JsonSerializable()
-class TownAndCountry {
-  TownAndCountry({required this.town, required this.country});
-
-  factory TownAndCountry.fromJson(Map<String, dynamic> json) =>
-      _$TownAndCountryFromJson(json);
-
-  final String town;
-  final String country;
-
-  Map<String, dynamic> toJson() => _$TownAndCountryToJson(this);
-
-  @override
-  String toString() => 'TownAndCountry(town: $town, country: $country)';
-}
-
 Future<void> outputTypeExampleWithAck() async {
-  print('\nschemaExampleWithAck: ${provider.displayName}');
+  print('\nschemaExampleWithAck: $displayName');
 
   final tncSchema = Ack.object(
     {'town': Ack.string(), 'country': Ack.string()},
@@ -57,6 +48,7 @@ Future<void> outputTypeExampleWithAck() async {
 
   final agent = Agent(
     provider: provider,
+    model: model,
     outputType: tncSchema.toMap(),
     outputFromJson: TownAndCountry.fromJson,
   );
@@ -64,11 +56,12 @@ Future<void> outputTypeExampleWithAck() async {
   final result = await agent.runFor<TownAndCountry>(
     'The windy city in the US of A.',
   );
+
   print(result.output);
 }
 
 Future<void> outputTypeExampleWithJsonSchema() async {
-  print('\nschemaExampleWithJsonSchema: ${provider.displayName}');
+  print('\nschemaExampleWithJsonSchema: $displayName');
 
   final tncSchema = {
     'type': 'object',
@@ -82,6 +75,7 @@ Future<void> outputTypeExampleWithJsonSchema() async {
 
   final agent = Agent(
     provider: provider,
+    model: model,
     outputType: tncSchema,
     outputFromJson: TownAndCountry.fromJson,
   );
@@ -89,18 +83,23 @@ Future<void> outputTypeExampleWithJsonSchema() async {
   final result = await agent.runFor<TownAndCountry>(
     'The windy city in the US of A.',
   );
+
   print(result.output);
 }
 
-// Future<void> outputTypeExampleWithSotiSchema() async {
-//   print('\nschemaExampleWithSotiSchema: ${modelConfig.displayName}');
+Future<void> outputTypeExampleWithSotiSchema() async {
+  print('\nschemaExampleWithSotiSchema: $displayName');
 
-//   final agent = Agent(
-//     modelConfig: modelConfig,
-//     outputType: tncSchema,
-//     instrument: true,
-//   );
+  final agent = Agent(
+    provider: provider,
+    model: model,
+    outputType: TownAndCountry.schemaMap,
+    outputFromJson: TownAndCountry.fromJson,
+  );
 
-//   final result = await agent.run('The windy city in the US of A.');
-//   print(result.output);
-// }
+  final result = await agent.runFor<TownAndCountry>(
+    'The windy city in the US of A.',
+  );
+
+  print(result.output);
+}
