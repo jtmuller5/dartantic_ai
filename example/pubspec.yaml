@@ -6,7 +6,6 @@ environment:
   sdk: ^3.7.2
 
 dependencies:
-  ack: ^0.1.2
   dartantic_ai:
     path: ..
   json_annotation: ^4.9.0

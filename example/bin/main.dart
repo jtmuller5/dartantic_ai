@@ -2,7 +2,6 @@
 
 import 'dart:io';
 
-import 'package:ack/ack.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:example/town_and_country.dart';
 
@@ -10,7 +9,7 @@ import 'package:example/town_and_country.dart';
 // Provider? get provider => OpenAiProvider();
 Provider? get provider => null;
 
-String? get model => 'google-gla:gemini-1.5-flash';
+String? get model => 'google-gla:gemini-2.0-flash';
 // String? get model => 'openai:gpt-4o';
 // String? get model => null;
 
@@ -19,8 +18,8 @@ String get displayName => provider?.displayName ?? model ?? 'ERROR';
 void main() async {
   // examples from https://ai.pydantic.dev/
   await helloWorldExample();
-  await outputTypeExampleWithAck();
-  await outputTypeExampleWithJsonSchema();
+  await outputTypeExampleWithJsonSchemaAndStringOutput();
+  await outputTypeExampleWithJsonSchemaAndOutjectOutput();
   await outputTypeExampleWithSotiSchema();
   exit(0);
 }
@@ -38,30 +37,26 @@ Future<void> helloWorldExample() async {
   print(result.output);
 }
 
-Future<void> outputTypeExampleWithAck() async {
-  print('\nschemaExampleWithAck: $displayName');
+Future<void> outputTypeExampleWithJsonSchemaAndStringOutput() async {
+  print('\noutputTypeExampleWithJsonSchemaAndStringOutput: $displayName');
 
-  final tncSchema = Ack.object(
-    {'town': Ack.string(), 'country': Ack.string()},
-    required: ['town', 'country'],
-  );
+  final tncSchema = {
+    'type': 'object',
+    'properties': {
+      'town': {'type': 'string'},
+      'country': {'type': 'string'},
+    },
+    'required': ['town', 'country'],
+    'additionalProperties': false,
+  };
 
-  final agent = Agent(
-    provider: provider,
-    model: model,
-    outputType: tncSchema.toMap(),
-    outputFromJson: TownAndCountry.fromJson,
-  );
-
-  final result = await agent.runFor<TownAndCountry>(
-    'The windy city in the US of A.',
-  );
-
+  final agent = Agent(provider: provider, model: model, outputType: tncSchema);
+  final result = await agent.run('The windy city in the US of A.');
   print(result.output);
 }
 
-Future<void> outputTypeExampleWithJsonSchema() async {
-  print('\nschemaExampleWithJsonSchema: $displayName');
+Future<void> outputTypeExampleWithJsonSchemaAndOutjectOutput() async {
+  print('\noutputTypeExampleWithJsonSchemaAndOutjectOutput: $displayName');
 
   final tncSchema = {
     'type': 'object',
@@ -88,7 +83,7 @@ Future<void> outputTypeExampleWithJsonSchema() async {
 }
 
 Future<void> outputTypeExampleWithSotiSchema() async {
-  print('\nschemaExampleWithSotiSchema: $displayName');
+  print('\noutputTypeExampleWithSotiSchema: $displayName');
 
   final agent = Agent(
     provider: provider,
