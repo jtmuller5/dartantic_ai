@@ -12,6 +12,8 @@ The following are the target features for this package:
 - [x] Multi-Model Support
 - [x] Create agents from model strings (e.g. `openai:gpt-4o`) or typed
   providers (e.g. `GoogleProvider()`)
+- [x] Automatically check environment for API key if none is provided (not web
+  compatible)
 - [x] String output via `Agent.run`
 - [x] Typed output via `Agent.runFor`
 - [ ] Define tools and their inputs/outputs easily
