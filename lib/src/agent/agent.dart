@@ -9,7 +9,19 @@ import 'agent_response.dart';
 
 export 'agent_response.dart';
 
+/// An agent that can run prompts through an AI model and return responses.
+///
+/// This class provides a unified interface for interacting with different
+/// AI model providers and handling both string and typed responses.
 class Agent {
+  /// Creates a new [Agent] with the given [model] and [provider].
+  ///
+  /// The [model] is the model to use for the agent in the format
+  /// "family:model". The [provider] is the provider to use for the agent. One
+  /// of [model] or [provider] must be provided but not both. The [systemPrompt]
+  /// is the system prompt to use for the agent. The [outputType] is the output
+  /// type to use for the agent. The [outputFromJson] is the function to use to
+  /// convert the output to a typed object.
   Agent({
     String? model,
     Provider? provider,
@@ -43,10 +55,22 @@ class Agent {
   }
 
   late final Model _model;
+
+  /// Function to convert JSON output to a typed object.
+  ///
+  /// When provided, this function is used to convert the JSON response from the
+  /// model into a strongly-typed object when using [runFor].
   final dynamic Function(Map<String, dynamic> json)? outputFromJson;
 
+  /// Runs the given [prompt] through the model and returns the response.
+  ///
+  /// Returns an [AgentResponse] containing the raw string output.
   Future<AgentResponse> run(String prompt) => _model.run(prompt);
 
+  /// Runs the given [prompt] through the model and returns a typed response.
+  ///
+  /// Returns an [AgentResponseFor<T>] containing the output converted to type
+  /// [T]. Uses [outputFromJson] to convert the JSON response if provided.
   Future<AgentResponseFor<T>> runFor<T>(String prompt) async {
     final output = await run(prompt);
     final outputJson = jsonDecode(output.output);

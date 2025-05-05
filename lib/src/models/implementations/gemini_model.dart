@@ -3,7 +3,17 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../agent/agent_response.dart';
 import '../interface/model.dart';
 
+/// Implementation of [Model] that uses Google's Gemini API.
+///
+/// This model handles interaction with Gemini models, supporting both
+/// standard text responses and structured JSON schema responses.
 class GeminiModel extends Model {
+  /// Creates a new [GeminiModel] with the given parameters.
+  ///
+  /// The [modelName] is the name of the Gemini model to use.
+  /// The [apiKey] is the API key to use for authentication.
+  /// The [outputType] is an optional JSON schema for structured outputs.
+  /// The [systemPrompt] is an optional system prompt to use.
   GeminiModel({
     required String modelName,
     required String apiKey,
@@ -24,8 +34,15 @@ class GeminiModel extends Model {
        );
 
   late final GenerativeModel _model;
+
+  /// The system prompt used for this model instance.
+  ///
+  /// This provides context and instructions to guide the model's responses.
   final String? systemPrompt;
 
+  /// Runs the given [prompt] through the Gemini model and returns the response.
+  ///
+  /// Returns an [AgentResponse] containing the text from the model's response.
   @override
   Future<AgentResponse> run(String prompt) async {
     final result = await _model.generateContent([Content.text(prompt)]);
