@@ -8,8 +8,8 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'main.g.dart';
 
-final provider = GeminiProvider();
-// final provider = OpenAiProvider();
+// final provider = GeminiProvider();
+final provider = OpenAiProvider();
 
 // from https://ai.pydantic.dev/
 void main() async {
@@ -32,59 +32,63 @@ Future<void> helloWorldExample() async {
 }
 
 @JsonSerializable()
-class MyModel {
-  MyModel({required this.city, required this.country});
+class TownAndCountry {
+  TownAndCountry({required this.town, required this.country});
 
-  factory MyModel.fromJson(Map<String, dynamic> json) =>
-      _$MyModelFromJson(json);
+  factory TownAndCountry.fromJson(Map<String, dynamic> json) =>
+      _$TownAndCountryFromJson(json);
 
-  final String city;
+  final String town;
   final String country;
 
-  Map<String, dynamic> toJson() => _$MyModelToJson(this);
+  Map<String, dynamic> toJson() => _$TownAndCountryToJson(this);
 
   @override
-  String toString() => 'MyModel(city: $city, country: $country)';
+  String toString() => 'TownAndCountry(town: $town, country: $country)';
 }
 
 Future<void> outputTypeExampleWithAck() async {
   print('\nschemaExampleWithAck: ${provider.displayName}');
 
-  final myModelSchema = Ack.object(
-    {'city': Ack.string(), 'country': Ack.string()},
-    required: ['city', 'country'],
+  final tncSchema = Ack.object(
+    {'town': Ack.string(), 'country': Ack.string()},
+    required: ['town', 'country'],
   );
 
   final agent = Agent(
     provider: provider,
-    outputType: myModelSchema.toMap(),
-    outputFromJson: MyModel.fromJson,
+    outputType: tncSchema.toMap(),
+    outputFromJson: TownAndCountry.fromJson,
   );
 
-  final result = await agent.runFor<MyModel>('The windy city in the US of A.');
+  final result = await agent.runFor<TownAndCountry>(
+    'The windy city in the US of A.',
+  );
   print(result.output);
 }
 
 Future<void> outputTypeExampleWithJsonSchema() async {
   print('\nschemaExampleWithJsonSchema: ${provider.displayName}');
 
-  final myModelSchema = {
+  final tncSchema = {
     'type': 'object',
     'properties': {
-      'city': {'type': 'string'},
+      'town': {'type': 'string'},
       'country': {'type': 'string'},
     },
-    'required': ['city', 'country'],
+    'required': ['town', 'country'],
     'additionalProperties': false,
   };
 
   final agent = Agent(
     provider: provider,
-    outputType: myModelSchema,
-    outputFromJson: MyModel.fromJson,
+    outputType: tncSchema,
+    outputFromJson: TownAndCountry.fromJson,
   );
 
-  final result = await agent.runFor<MyModel>('The windy city in the US of A.');
+  final result = await agent.runFor<TownAndCountry>(
+    'The windy city in the US of A.',
+  );
   print(result.output);
 }
 
@@ -93,11 +97,10 @@ Future<void> outputTypeExampleWithJsonSchema() async {
 
 //   final agent = Agent(
 //     modelConfig: modelConfig,
-//     outputType: myModelSchema,
+//     outputType: tncSchema,
 //     instrument: true,
 //   );
 
 //   final result = await agent.run('The windy city in the US of A.');
 //   print(result.output);
-//   print('');
 // }

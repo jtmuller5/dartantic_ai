@@ -6,10 +6,11 @@ part of 'main.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-MyModel _$MyModelFromJson(Map<String, dynamic> json) =>
-    MyModel(city: json['city'] as String, country: json['country'] as String);
+TownAndCountry _$TownAndCountryFromJson(Map<String, dynamic> json) =>
+    TownAndCountry(
+      town: json['town'] as String,
+      country: json['country'] as String,
+    );
 
-Map<String, dynamic> _$MyModelToJson(MyModel instance) => <String, dynamic>{
-  'city': instance.city,
-  'country': instance.country,
-};
+Map<String, dynamic> _$TownAndCountryToJson(TownAndCountry instance) =>
+    <String, dynamic>{'town': instance.town, 'country': instance.country};
