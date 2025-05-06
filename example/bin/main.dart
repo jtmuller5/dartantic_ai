@@ -126,7 +126,7 @@ Future<void> toolExample() async {
   );
 
   final result = await agent.run(
-    'What is the time and temperature in New York City?',
+    'What is the time and temperature in New York City and Chicago?',
   );
 
   print(result.output);
