@@ -40,8 +40,6 @@ class GeminiModel extends Model {
        );
 
   late final gemini.GenerativeModel _model;
-
-  /// The tools to use for this model instance.
   final Iterable<Tool>? _tools;
 
   /// Runs the given [prompt] through the Gemini model and returns the response.

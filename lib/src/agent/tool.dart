@@ -21,9 +21,9 @@ class Tool {
   Tool({
     required this.name,
     required this.onCall,
-    this.description,
+    String? description,
     this.inputType,
-  });
+  }) : description = description ?? inputType?['description'];
 
   /// The unique identifier for this tool.
   final String name;

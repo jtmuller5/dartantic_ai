@@ -11,8 +11,8 @@ import 'package:example/town_and_country.dart';
 // Provider? get provider => OpenAiProvider();
 Provider? get provider => null;
 
-String? get model => 'google-gla';
-// String? get model => 'openai';
+// String? get model => 'google-gla';
+String? get model => 'openai';
 // String? get model => 'google-gla:gemini-2.0-flash';
 // String? get model => 'openai:gpt-4o';
 // String? get model => null;
@@ -115,6 +115,7 @@ Future<void> toolExample() async {
     tools: [
       Tool(
         name: 'time',
+        description: 'Get the current time in a given time zone',
         inputType: TimeFunctionInput.schemaMap,
         onCall: onTimeCall,
       ),
