@@ -1,7 +1,40 @@
+import 'package:json_annotation/json_annotation.dart';
+import 'package:soti_schema/annotations.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-import 'time_and_temp.dart';
+part 'time_tool_call.g.dart';
+
+@SotiSchema()
+@JsonSerializable()
+/// Get the current time in a given time zone
+class TimeFunctionInput {
+  TimeFunctionInput({required this.timeZoneName});
+
+  /// The name of the time zone to get the time in (e.g. "America/New_York")
+  final String timeZoneName;
+
+  static TimeFunctionInput fromJson(Map<String, dynamic> json) =>
+      _$TimeFunctionInputFromJson(json);
+
+  @jsonSchema
+  static Map<String, dynamic> get schemaMap => _$TimeFunctionInputSchemaMap;
+}
+
+@SotiSchema()
+@JsonSerializable()
+/// The current time in a given time zone
+class TimeFunctionOutput {
+  TimeFunctionOutput({required this.time});
+
+  /// The time in the given time zone
+  final DateTime time;
+
+  Map<String, dynamic> toJson() => _$TimeFunctionOutputToJson(this);
+
+  @jsonSchema
+  static Map<String, dynamic> get schemaMap => _$TimeFunctionOutputSchemaMap;
+}
 
 /// Use the timezone package to get the current time in a given timezone.
 Future<Map<String, Object?>?> onTimeCall(Map<String, Object?> input) async {

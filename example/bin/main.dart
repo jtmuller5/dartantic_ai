@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:example/temp_tool_call.dart';
-import 'package:example/time_and_temp.dart';
 import 'package:example/time_tool_call.dart';
 import 'package:example/town_and_country.dart';
 
@@ -19,7 +18,10 @@ String? get model => 'google-gla:gemini-2.0-flash';
 String get displayName => provider?.displayName ?? model ?? 'ERROR';
 
 void main() async {
-  // Run only the tool example to test our implementation
+  await helloWorldExample();
+  await outputTypeExampleWithJsonSchemaAndStringOutput();
+  await outputTypeExampleWithJsonSchemaAndOutjectOutput();
+  await outputTypeExampleWithSotiSchema();
   await toolExample();
   exit(0);
 }
@@ -111,7 +113,6 @@ Future<void> toolExample() async {
     tools: [
       Tool(
         name: 'time',
-        description: 'Get the current time in a given time zone',
         inputType: TimeFunctionInput.schemaMap,
         onCall: onTimeCall,
       ),
