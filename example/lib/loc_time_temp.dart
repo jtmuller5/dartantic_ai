@@ -24,6 +24,10 @@ class LocTimeTemp {
 
   @jsonSchema
   static Map<String, dynamic> get schemaMap => _$LocTimeTempSchemaMap;
+
+  @override
+  String toString() =>
+      'LocTimeTemp(location: $location, time: $time, temp: $temp)';
 }
 
 @SotiSchema()
@@ -41,4 +45,7 @@ class ListOfLocTimeTemps {
 
   @jsonSchema
   static Map<String, dynamic> get schemaMap => _$ListOfLocTimeTempsSchemaMap;
+
+  @override
+  String toString() => 'ListOfLocTimeTemps(locations: $locations)';
 }

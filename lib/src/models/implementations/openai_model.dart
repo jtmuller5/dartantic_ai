@@ -144,8 +144,14 @@ class OpenAiModel extends Model {
   ) {
     final result = Map<String, Object>.from(schema);
 
-    // Set additionalProperties: false for this object
-    result['additionalProperties'] = false;
+    // Skip adding additionalProperties if $ref is present
+    if (!result.containsKey(r'$ref')) {
+      // Set additionalProperties: false for this object
+      result['additionalProperties'] = false;
+    }
+
+    // Remove format field if it exists
+    result.remove('format');
 
     // Handle properties of objects
     if (result['properties'] is Map) {

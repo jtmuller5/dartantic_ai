@@ -48,6 +48,7 @@ class Agent {
 
     provider ??= providerFor(model!);
     _model = provider.createModel(
+      // _modelSettings = ModelSettings(
       ModelSettings(
         systemPrompt: systemPrompt,
         outputType: outputType,
@@ -56,6 +57,7 @@ class Agent {
     );
   }
 
+  // late final ModelSettings _modelSettings;
   late final Model _model;
 
   /// Function to convert JSON output to a typed object.
@@ -74,6 +76,8 @@ class Agent {
   /// Returns an [AgentResponseFor<T>] containing the output converted to type
   /// [T]. Uses [outputFromJson] to convert the JSON response if provided.
   Future<AgentResponseFor<T>> runFor<T>(String prompt) async {
+    // TODO: implement instrumentation via Dart logging package
+    // dev.log('schema: ${_modelSettings.outputType}');
     final output = await run(prompt);
     final outputJson = jsonDecode(output.output);
     final outputTyped = outputFromJson?.call(outputJson) ?? outputJson;
