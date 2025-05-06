@@ -4,7 +4,7 @@
 /// [input] - A map containing the parameters passed to the tool. Returns a
 /// Future that resolves to a map of result values, or null if no result.
 typedef ToolCallHandler =
-    Future<Map<String, Object?>?> Function(Map<String, Object?> input);
+    Future<Map<String, dynamic>> Function(Map<String, dynamic> input);
 
 /// Represents a tool that can be called by an agent to perform a specific
 /// function.

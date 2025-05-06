@@ -21,18 +21,8 @@ class TempFunctionInput {
   static Map<String, dynamic> get schemaMap => _$TempFunctionInputSchemaMap;
 }
 
-@JsonSerializable()
-class TempFunctionOutput {
-  TempFunctionOutput({required this.temperature});
-
-  /// The temperature in degrees Fahrenheit
-  final double temperature;
-
-  Map<String, dynamic> toJson() => _$TempFunctionOutputToJson(this);
-}
-
 /// Use free, API-key-free services to look up the weather for a given location.
-Future<Map<String, dynamic>?> onTempCall(Map<String, dynamic> input) async {
+Future<Map<String, dynamic>> onTempCall(Map<String, dynamic> input) async {
   // parse the JSON input into a type-safe object
   final tempInput = TempFunctionInput.fromJson(input);
 
@@ -83,6 +73,6 @@ Future<Map<String, dynamic>?> onTempCall(Map<String, dynamic> input) async {
   // ignore: avoid_dynamic_calls
   final temperature = weatherData['current']['temperature_2m'] as double;
 
-  // construct a type-safe object, then translate to JSON to return
-  return TempFunctionOutput(temperature: temperature).toJson();
+  // return a JSON map directly as output
+  return {'temperature': temperature};
 }

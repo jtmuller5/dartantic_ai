@@ -16,16 +16,6 @@ Map<String, dynamic> _$TempFunctionInputToJson(TempFunctionInput instance) =>
       'location': instance.location,
     };
 
-TempFunctionOutput _$TempFunctionOutputFromJson(Map<String, dynamic> json) =>
-    TempFunctionOutput(
-      temperature: (json['temperature'] as num).toDouble(),
-    );
-
-Map<String, dynamic> _$TempFunctionOutputToJson(TempFunctionOutput instance) =>
-    <String, dynamic>{
-      'temperature': instance.temperature,
-    };
-
 // **************************************************************************
 // SotiSchemaGenerator
 // **************************************************************************
