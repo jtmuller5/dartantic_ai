@@ -8,11 +8,17 @@ Future<Map<String, dynamic>?> onTempCall(Map<String, dynamic> input) async {
   final tempInput = TempFunctionInput.fromJson(input);
   final location = tempInput.location;
 
-  // First, geocode the location string to get coordinates
+  // Use Nominatim API (OpenStreetMap) for better geocoding of vague place names
+  final encodedLocation = Uri.encodeComponent(location);
   final geocodeUrl = Uri.parse(
-    'https://geocoding-api.open-meteo.com/v1/search?name=$location&count=1',
+    'https://nominatim.openstreetmap.org/search?q=$encodedLocation&format=json&limit=1',
   );
-  final geocodeResponse = await http.get(geocodeUrl);
+
+  // Add a user agent header as required by Nominatim's usage policy
+  final geocodeResponse = await http.get(
+    geocodeUrl,
+    headers: {'User-Agent': 'DartanticAI/1.0'},
+  );
 
   if (geocodeResponse.statusCode != 200) {
     throw Exception(
@@ -21,19 +27,18 @@ Future<Map<String, dynamic>?> onTempCall(Map<String, dynamic> input) async {
     );
   }
 
-  final geocodeData = jsonDecode(geocodeResponse.body);
+  final geocodeData = jsonDecode(geocodeResponse.body) as List<dynamic>;
 
-  // ignore: avoid_dynamic_calls
-  final results = geocodeData['results'] as List<dynamic>?;
-  if (results == null || results.isEmpty) {
+  if (geocodeData.isEmpty) {
     throw Exception('Location not found: $location');
   }
 
-  // ignore: avoid_dynamic_calls
-  final latitude = results[0]['latitude'];
+  // Extract latitude and longitude from the first result
 
   // ignore: avoid_dynamic_calls
-  final longitude = results[0]['longitude'];
+  final latitude = double.parse(geocodeData[0]['lat'] as String);
+  // ignore: avoid_dynamic_calls
+  final longitude = double.parse(geocodeData[0]['lon'] as String);
 
   // Open-Meteo API doesn't require an API key
   final weatherUrl = Uri.parse(

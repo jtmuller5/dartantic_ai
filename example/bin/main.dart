@@ -105,6 +105,9 @@ Future<void> toolExample() async {
   final agent = Agent(
     provider: provider,
     model: model,
+    systemPrompt:
+        'Be sure to include the name of the location in your response. Show '
+        'the time as local time. Do not ask any follow up questions.',
     tools: [
       Tool(
         name: 'time',
