@@ -262,3 +262,24 @@ expecting from the LLM and to decode the input JSON into a typed object for our
 implementation of the `onTimeCall` function. Likewise, we use the tool output
 type to gather the returned data before encoding that back into JSON for the
 return to the LLM.
+
+Since the LLM is a little more lax about the data you return to it, you may
+decide to define a Dart type for your input parameters and just bundle up the
+return data manually, like so:
+
+```dart
+Future<Map<String, dynamic>?> onTimeCall(Map<String, dynamic> input) async {
+  // parse the JSON input into a type-safe object
+  final timeInput = TimeFunctionInput.fromJson(input);
+
+  tz_data.initializeTimeZones();
+  final location = tz.getLocation(timeInput.timeZoneName);
+  final now = tz.TZDateTime.now(location);
+
+  // return a JSON map directly as output
+  return {'time': now);
+}
+```
+
+Not only is this simpler code, but it frees you from maintaining a separate type
+for output.
