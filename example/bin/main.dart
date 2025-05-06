@@ -3,25 +3,24 @@
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
+import 'package:example/temp_tool_call.dart';
 import 'package:example/time_and_temp.dart';
+import 'package:example/time_tool_call.dart';
 import 'package:example/town_and_country.dart';
 
-// Provider? get provider => GeminiProvider();
+Provider? get provider => GeminiProvider();
 // Provider? get provider => OpenAiProvider();
-Provider? get provider => null;
+// Provider? get provider => null;
 
-String? get model => 'google-gla:gemini-2.0-flash';
+// String? get model => 'google-gla:gemini-2.0-flash';
 // String? get model => 'openai:gpt-4o';
-// String? get model => null;
+String? get model => null;
 
 String get displayName => provider?.displayName ?? model ?? 'ERROR';
 
 void main() async {
-  // examples from https://ai.pydantic.dev/
-  await helloWorldExample();
-  await outputTypeExampleWithJsonSchemaAndStringOutput();
-  await outputTypeExampleWithJsonSchemaAndOutjectOutput();
-  await outputTypeExampleWithSotiSchema();
+  // Run only the tool example to test our implementation
+  await toolExample();
   exit(0);
 }
 
@@ -41,7 +40,7 @@ Future<void> helloWorldExample() async {
 Future<void> outputTypeExampleWithJsonSchemaAndStringOutput() async {
   print('\noutputTypeExampleWithJsonSchemaAndStringOutput: $displayName');
 
-  final tncSchema = {
+  final tncSchema = <String, Object>{
     'type': 'object',
     'properties': {
       'town': {'type': 'string'},
@@ -59,7 +58,7 @@ Future<void> outputTypeExampleWithJsonSchemaAndStringOutput() async {
 Future<void> outputTypeExampleWithJsonSchemaAndOutjectOutput() async {
   print('\noutputTypeExampleWithJsonSchemaAndOutjectOutput: $displayName');
 
-  final tncSchema = {
+  final tncSchema = <String, Object>{
     'type': 'object',
     'properties': {
       'town': {'type': 'string'},
@@ -111,13 +110,13 @@ Future<void> toolExample() async {
         name: 'time',
         description: 'Get the current time in a given time zone',
         inputType: TimeFunctionInput.schemaMap,
-        onCall: _onTime,
+        onCall: onTimeCall,
       ),
       Tool(
         name: 'temp',
         description: 'Get the current temperature in a given location',
         inputType: TempFunctionInput.schemaMap,
-        onCall: _onTemp,
+        onCall: onTempCall,
       ),
     ],
   );
@@ -127,21 +126,4 @@ Future<void> toolExample() async {
   );
 
   print(result.output);
-}
-
-// TODO: implement this using the timezone package
-Future<Map<String, dynamic>?> _onTime(Map<String, dynamic> input) async {
-  final timeInput = TimeFunctionInput.fromJson(input);
-  final timeZoneName = timeInput.timeZoneName;
-  final location = timeInput.timeZone;
-  final time = DateTime.now().toIso8601String();
-  return TimeFunctionOutput(time: time).toJson();
-}
-
-// TODO: implement this using a free weather API
-Future<Map<String, dynamic>?> _onTemp(Map<String, dynamic> input) async {
-  final tempInput = TempFunctionInput.fromJson(input);
-  final location = tempInput.location;
-  const temp = 70;
-  return TempFunctionOutput(temperature: temp).toJson();
 }

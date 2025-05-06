@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
 
 import '../../agent/agent_response.dart';
@@ -58,12 +60,15 @@ class GeminiModel extends Model {
     // if the model returned function calls, handle them
     if (result.functionCalls.isNotEmpty) {
       final response = await _model.startChat().sendMessage(
-        gemini.Content.functionResponses([
-          for (final functionCall in result.functionCalls)
-            gemini.FunctionResponse(
-              functionCall.name,
-              await _callTool(functionCall.name, functionCall.args),
-            ),
+        gemini.Content.multi([
+          gemini.TextPart(''), // Gemini requires a text part (Vertex doesn't?)
+          ...[
+            for (final functionCall in result.functionCalls)
+              gemini.FunctionResponse(
+                functionCall.name,
+                await _callTool(functionCall.name, functionCall.args),
+              ),
+          ],
         ]),
       );
 
@@ -77,15 +82,21 @@ class GeminiModel extends Model {
     String name,
     Map<String, Object?> args,
   ) async {
+    Map<String, Object?>? result;
     try {
       // if the tool isn't found, return an error
       final tool = _tools?.where((t) => t.name == name).singleOrNull;
-      if (tool == null) return {'error': 'Tool $name not found'};
-      return await tool.onCall.call(args);
+      result =
+          tool == null
+              ? {'error': 'Tool $name not found'}
+              : await tool.onCall.call(args);
     } on Exception catch (ex) {
       // if the tool call throws an error, return the exception message
-      return {'error': ex.toString()};
+      result = {'error': ex.toString()};
     }
+
+    dev.log('Tool: $name($args)= $result');
+    return result;
   }
 
   static gemini.Schema _schemaObjectFrom(Map<String, dynamic> jsonSchema) {

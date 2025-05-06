@@ -8,8 +8,10 @@ environment:
 dependencies:
   dartantic_ai:
     path: ..
+  http: ^1.2.0
   json_annotation: ^4.9.0
   soti_schema: ^1.0.0
+  timezone: ^0.10.1
 
 dev_dependencies:
   all_lint_rules_community: ^0.0.43

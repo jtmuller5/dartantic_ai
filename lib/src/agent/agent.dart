@@ -23,7 +23,9 @@ class Agent {
   /// of [model] or [provider] must be provided but not both. The [systemPrompt]
   /// is the system prompt to use for the agent. The [outputType] is the output
   /// type to use for the agent. The [outputFromJson] is the function to use to
-  /// convert the output to a typed object.
+  /// convert the output to a typed object. The [tools] parameter allows you to
+  /// provide a collection of tools that the agent can use to perform external
+  /// actions or access specific capabilities.
   Agent({
     String? model,
     Provider? provider,
