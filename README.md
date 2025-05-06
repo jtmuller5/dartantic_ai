@@ -244,7 +244,7 @@ We can now use the JSON serialization support in these two types to implement
 the tool call function:
 
 ```dart
-Future<Map<String, Object?>?> onTimeCall(Map<String, Object?> input) async {
+Future<Map<String, dynamic>?> onTimeCall(Map<String, dynamic> input) async {
   // parse the JSON input into a type-safe object
   final timeInput = TimeFunctionInput.fromJson(input);
 
