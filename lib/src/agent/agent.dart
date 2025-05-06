@@ -18,10 +18,14 @@ export 'tool.dart';
 class Agent {
   /// Creates a new [Agent] with the given [model] and [provider].
   ///
-  /// The [model] is the model to use for the agent in the format
-  /// "family:model". The [provider] is the provider to use for the agent. One
-  /// of [model] or [provider] must be provided but not both. The [systemPrompt]
-  /// is the system prompt to use for the agent. The [outputType] is the output
+  /// The [model] is the model to use for the agent in the format "familyName"
+  /// or "familyName:modelName". The [provider] is the provider to use for the
+  /// agent. One of [model] or [provider] must be provided but not both. The
+  /// [systemPrompt] is the system prompt to use for the agent. The [outputType]
+  /// is the output type to use for the agent. The [outputFromJson] is the
+  /// function to use to convert the output to a typed object. The [tools]
+  /// parameter allows you to provide a collection of tools that the agent can
+  /// use to perform external actions or access specific capabilities.
   /// type to use for the agent. The [outputFromJson] is the function to use to
   /// convert the output to a typed object. The [tools] parameter allows you to
   /// provide a collection of tools that the agent can use to perform external
@@ -37,23 +41,12 @@ class Agent {
     if (model == null && provider == null) {
       throw ArgumentError('Either model or provider must be provided');
     }
+
     if (model != null && provider != null) {
       throw ArgumentError('Only one of model or provider can be provided');
     }
-    if (model != null && model.split(':').length != 2) {
-      throw ArgumentError('Model must be in the format "family:model"');
-    }
 
-    provider =
-        provider ??
-        ProviderTable.providerFor(
-          ProviderSettings(
-            familyName: model!.split(':').first,
-            modelName: model.split(':').last,
-            apiKey: null,
-          ),
-        );
-
+    provider ??= providerFor(model!);
     _model = provider.createModel(
       ModelSettings(
         systemPrompt: systemPrompt,
@@ -85,5 +78,23 @@ class Agent {
     final outputJson = jsonDecode(output.output);
     final outputTyped = outputFromJson?.call(outputJson) ?? outputJson;
     return AgentResponseFor(output: outputTyped);
+  }
+
+  /// Resolves the provider for the given [model] in "familyName" or
+  /// "familyName:modelName" format.
+  static Provider providerFor(String model) {
+    if (model.isEmpty) throw ArgumentError('Model must be provided');
+
+    final modelParts = model.split(':');
+    final familyName = modelParts[0];
+    final modelName = modelParts.length != 1 ? modelParts[1] : null;
+
+    return ProviderTable.providerFor(
+      ProviderSettings(
+        familyName: familyName,
+        modelName: modelName,
+        apiKey: null,
+      ),
+    );
   }
 }

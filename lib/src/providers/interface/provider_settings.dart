@@ -19,7 +19,7 @@ class ProviderSettings {
   final String familyName;
 
   /// The specific model name to use within the provider family.
-  final String modelName;
+  final String? modelName;
 
   /// The API key for authentication with the provider.
   final String? apiKey;
