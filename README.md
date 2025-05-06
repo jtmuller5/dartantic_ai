@@ -16,8 +16,9 @@ The following are the target features for this package:
   compatible)
 - [x] String output via `Agent.run`
 - [x] Typed output via `Agent.runFor`
-- [ ] Define tools and their inputs/outputs easily
-- [ ] Automatically generate OpenAI / Anthropic / Gemini tool/output schemas
+- [x] Define tools and their inputs/outputs easily
+- [x] Automatically generate LLM-specific tool/output schemas
+- [ ] Bring your own provider
 - [ ] Execute tools with validated inputs
 - [ ] Chains and Sequential Execution
 - [ ] JSON Mode, Functions Mode, Flexible Decoding
