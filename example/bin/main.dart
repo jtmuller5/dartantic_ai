@@ -134,3 +134,38 @@ Future<void> toolExample() async {
 
   print(result.output);
 }
+
+// NOTE: this doesn't work with gemini or openai
+// Future<void> toolExampleWithTypedOutput() async {
+//   print('\ntoolExampleWithTypedOutput: $displayName');
+
+//   final agent = Agent(
+//     provider: provider,
+//     model: model,
+//     systemPrompt:
+//         'Be sure to include the name of the location in your response. Show '
+//         'the time as local time. Do not ask any follow up questions.',
+//     outputType: ListOfLocTimeTemps.schemaMap,
+//     outputFromJson: ListOfLocTimeTemps.fromJson,
+//     tools: [
+//       Tool(
+//         name: 'time',
+//         description: 'Get the current time in a given time zone',
+//         inputType: TimeFunctionInput.schemaMap,
+//         onCall: onTimeCall,
+//       ),
+//       Tool(
+//         name: 'temp',
+//         description: 'Get the current temperature in a given location',
+//         inputType: TempFunctionInput.schemaMap,
+//         onCall: onTempCall,
+//       ),
+//     ],
+//   );
+
+//   final result = await agent.runFor<ListOfLocTimeTemps>(
+//     'What is the time and temperature in New York City and Chicago?',
+//   );
+
+//   print(result.output);
+// }

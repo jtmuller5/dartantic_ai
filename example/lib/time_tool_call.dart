@@ -31,7 +31,7 @@ class TimeFunctionOutput {
 }
 
 /// Use the timezone package to get the current time in a given timezone.
-Future<Map<String, Object?>?> onTimeCall(Map<String, Object?> input) async {
+Future<Map<String, dynamic>?> onTimeCall(Map<String, dynamic> input) async {
   // parse the JSON input into a type-safe object
   final timeInput = TimeFunctionInput.fromJson(input);
 

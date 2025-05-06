@@ -32,7 +32,7 @@ class TempFunctionOutput {
 }
 
 /// Use free, API-key-free services to look up the weather for a given location.
-Future<Map<String, Object?>?> onTempCall(Map<String, Object?> input) async {
+Future<Map<String, dynamic>?> onTempCall(Map<String, dynamic> input) async {
   // parse the JSON input into a type-safe object
   final tempInput = TempFunctionInput.fromJson(input);
 

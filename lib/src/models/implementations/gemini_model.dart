@@ -32,7 +32,7 @@ class GeminiModel extends Model {
                  ? null
                  : gemini.GenerationConfig(
                    responseMimeType: 'application/json',
-                   responseSchema: _schemaObjectFrom(outputType),
+                   responseSchema: _schemaObjectFrom(outputType, outputType),
                  ),
          systemInstruction:
              systemPrompt != null ? gemini.Content.text(systemPrompt) : null,
@@ -97,18 +97,36 @@ class GeminiModel extends Model {
     return result;
   }
 
-  static gemini.Schema _schemaObjectFrom(Map<String, dynamic> jsonSchema) {
+  static gemini.Schema _schemaObjectFrom(
+    Map<String, dynamic> jsonSchema,
+    Map<String, dynamic> rootSchema,
+  ) {
+    // Handle $ref references
+    if (jsonSchema.containsKey(r'$ref')) {
+      final ref = jsonSchema[r'$ref'] as String;
+      if (ref.startsWith(r'#/$defs/')) {
+        final defName = ref.substring(8); // Remove '#/$defs/'
+        final defs = rootSchema[r'$defs'] as Map<String, dynamic>?;
+        if (defs != null && defs.containsKey(defName)) {
+          return _schemaObjectFrom(defs[defName], rootSchema);
+        }
+      }
+    }
+
     final type = _getSchemaType(jsonSchema['type']);
 
     return switch (type) {
       gemini.SchemaType.object => gemini.Schema.object(
-        properties: _extractProperties(jsonSchema['properties'] ?? {}),
+        properties: _extractProperties(
+          jsonSchema['properties'] ?? {},
+          rootSchema,
+        ),
         requiredProperties: _extractRequiredProperties(jsonSchema['required']),
         description: jsonSchema['description'],
         nullable: jsonSchema['nullable'],
       ),
       gemini.SchemaType.array => gemini.Schema.array(
-        items: _schemaObjectFrom(jsonSchema['items'] ?? {}),
+        items: _schemaObjectFrom(jsonSchema['items'] ?? {}, rootSchema),
         description: jsonSchema['description'],
         nullable: jsonSchema['nullable'],
       ),
@@ -141,10 +159,11 @@ class GeminiModel extends Model {
 
   static Map<String, gemini.Schema> _extractProperties(
     Map<String, dynamic> properties,
+    Map<String, dynamic> rootSchema,
   ) {
     final result = <String, gemini.Schema>{};
     for (final entry in properties.entries) {
-      result[entry.key] = _schemaObjectFrom(entry.value);
+      result[entry.key] = _schemaObjectFrom(entry.value, rootSchema);
     }
     return result;
   }
@@ -173,7 +192,7 @@ class GeminiModel extends Model {
       // Convert inputType to a Schema object using the existing method
       final parameters =
           tool.inputType != null
-              ? _schemaObjectFrom(tool.inputType!)
+              ? _schemaObjectFrom(tool.inputType!, tool.inputType!)
               : gemini.Schema.object(properties: {});
 
       // Create a function declaration for the tool

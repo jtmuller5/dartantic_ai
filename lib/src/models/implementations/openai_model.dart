@@ -127,10 +127,59 @@ class OpenAiModel extends Model {
     Map<String, dynamic> jsonSchema, {
     String name = 'response',
     bool strict = true,
-  }) => openai.JsonSchemaObject(
-    name: name,
-    description: jsonSchema['description'],
-    schema: {...jsonSchema, 'additionalProperties': false},
-    strict: strict,
-  );
+  }) {
+    // Ensure additionalProperties: false is set at every object level
+    final schema = _ensureAdditionalPropertiesFalse(jsonSchema);
+
+    return openai.JsonSchemaObject(
+      name: name,
+      description: schema['description'] as String?,
+      schema: schema,
+      strict: strict,
+    );
+  }
+
+  static Map<String, Object> _ensureAdditionalPropertiesFalse(
+    Map<String, dynamic> schema,
+  ) {
+    final result = Map<String, Object>.from(schema);
+
+    // Set additionalProperties: false for this object
+    result['additionalProperties'] = false;
+
+    // Handle properties of objects
+    if (result['properties'] is Map) {
+      final properties = Map<String, Object>.from(result['properties']! as Map);
+      for (final entry in properties.entries) {
+        if (entry.value is Map) {
+          properties[entry.key] = _ensureAdditionalPropertiesFalse(
+            entry.value as Map<String, dynamic>,
+          );
+        }
+      }
+      result['properties'] = properties;
+    }
+
+    // Handle items of arrays
+    if (result['items'] is Map) {
+      result['items'] = _ensureAdditionalPropertiesFalse(
+        result['items']! as Map<String, dynamic>,
+      );
+    }
+
+    // Handle definitions
+    if (result[r'$defs'] is Map) {
+      final definitions = Map<String, Object>.from(result[r'$defs']! as Map);
+      for (final entry in definitions.entries) {
+        if (entry.value is Map) {
+          definitions[entry.key] = _ensureAdditionalPropertiesFalse(
+            entry.value as Map<String, dynamic>,
+          );
+        }
+      }
+      result[r'$defs'] = definitions;
+    }
+
+    return result;
+  }
 }
