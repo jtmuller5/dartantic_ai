@@ -45,5 +45,6 @@ class OpenAiProvider extends Provider {
     apiKey: apiKey,
     outputType: settings.outputType,
     systemPrompt: settings.systemPrompt,
+    tools: settings.tools,
   );
 }

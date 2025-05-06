@@ -13,7 +13,10 @@ TownAndCountry _$TownAndCountryFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$TownAndCountryToJson(TownAndCountry instance) =>
-    <String, dynamic>{'town': instance.town, 'country': instance.country};
+    <String, dynamic>{
+      'town': instance.town,
+      'country': instance.country,
+    };
 
 // **************************************************************************
 // SotiSchemaGenerator
@@ -24,8 +27,8 @@ const _$TownAndCountrySchemaMap = <String, dynamic>{
   r'type': r'object',
   r'properties': {
     r'town': {r'type': r'string'},
-    r'country': {r'type': r'string'},
+    r'country': {r'type': r'string'}
   },
   r'required': [r'town', r'country'],
-  r'$defs': {},
+  r'$defs': {}
 };

@@ -1,4 +1,4 @@
-import '../../models/implementations/gemini_model.dart';
+import '../../models/implementations/gemini_model.dart' show GeminiModel;
 import '../../models/interface/model.dart';
 import '../../models/interface/model_settings.dart';
 import '../../platform/platform.dart' as platform;
@@ -45,5 +45,6 @@ class GeminiProvider extends Provider {
     apiKey: apiKey,
     outputType: settings.outputType,
     systemPrompt: settings.systemPrompt,
+    tools: settings.tools,
   );
 }

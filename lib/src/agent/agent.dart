@@ -6,8 +6,10 @@ import '../providers/implementation/provider_table.dart';
 import '../providers/interface/provider.dart';
 import '../providers/interface/provider_settings.dart';
 import 'agent_response.dart';
+import 'tool.dart';
 
 export 'agent_response.dart';
+export 'tool.dart';
 
 /// An agent that can run prompts through an AI model and return responses.
 ///
@@ -28,6 +30,7 @@ class Agent {
     String? systemPrompt,
     Map<String, dynamic>? outputType,
     this.outputFromJson,
+    Iterable<Tool>? tools,
   }) {
     if (model == null && provider == null) {
       throw ArgumentError('Either model or provider must be provided');
@@ -50,7 +53,11 @@ class Agent {
         );
 
     _model = provider.createModel(
-      ModelSettings(systemPrompt: systemPrompt, outputType: outputType),
+      ModelSettings(
+        systemPrompt: systemPrompt,
+        outputType: outputType,
+        tools: tools,
+      ),
     );
   }
 

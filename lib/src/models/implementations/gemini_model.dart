@@ -1,6 +1,7 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
 
 import '../../agent/agent_response.dart';
+import '../../agent/tool.dart';
 import '../interface/model.dart';
 
 /// Implementation of [Model] that uses Google's Gemini API.
@@ -18,82 +19,121 @@ class GeminiModel extends Model {
     required String modelName,
     required String apiKey,
     Map<String, dynamic>? outputType,
-    this.systemPrompt,
-  }) : _model = GenerativeModel(
+    String? systemPrompt,
+    Iterable<Tool>? tools,
+  }) : _tools = tools,
+       _model = gemini.GenerativeModel(
          apiKey: apiKey,
          model: modelName,
          generationConfig:
              outputType == null
                  ? null
-                 : GenerationConfig(
+                 : gemini.GenerationConfig(
                    responseMimeType: 'application/json',
                    responseSchema: _schemaObjectFrom(outputType),
                  ),
          systemInstruction:
-             systemPrompt != null ? Content.text(systemPrompt) : null,
+             systemPrompt != null ? gemini.Content.text(systemPrompt) : null,
+         tools: tools != null ? _toolsFrom(tools) : null,
        );
 
-  late final GenerativeModel _model;
+  late final gemini.GenerativeModel _model;
 
-  /// The system prompt used for this model instance.
-  ///
-  /// This provides context and instructions to guide the model's responses.
-  final String? systemPrompt;
+  /// The tools to use for this model instance.
+  final Iterable<Tool>? _tools;
 
   /// Runs the given [prompt] through the Gemini model and returns the response.
   ///
   /// Returns an [AgentResponse] containing the text from the model's response.
   @override
   Future<AgentResponse> run(String prompt) async {
-    final result = await _model.generateContent([Content.text(prompt)]);
-    return AgentResponse(output: result.text ?? '');
+    // send the prompt to the model
+    final result = await _model.startChat().sendMessage(
+      gemini.Content.text(prompt),
+    );
+
+    // get the text from the model's response
+    final output = StringBuffer(result.text ?? '');
+
+    // if the model returned function calls, handle them
+    if (result.functionCalls.isNotEmpty) {
+      final response = await _model.startChat().sendMessage(
+        gemini.Content.functionResponses([
+          for (final functionCall in result.functionCalls)
+            gemini.FunctionResponse(
+              functionCall.name,
+              await _callTool(functionCall.name, functionCall.args),
+            ),
+        ]),
+      );
+
+      output.write(response.text ?? '');
+    }
+
+    return AgentResponse(output: output.toString());
   }
 
-  static Schema _schemaObjectFrom(Map<String, dynamic> jsonSchema) {
+  Future<Map<String, Object?>?> _callTool(
+    String name,
+    Map<String, Object?> args,
+  ) async {
+    try {
+      // if the tool isn't found, return an error
+      final tool = _tools?.where((t) => t.name == name).singleOrNull;
+      if (tool == null) return {'error': 'Tool $name not found'};
+      return await tool.onCall.call(args);
+    } on Exception catch (ex) {
+      // if the tool call throws an error, return the exception message
+      return {'error': ex.toString()};
+    }
+  }
+
+  static gemini.Schema _schemaObjectFrom(Map<String, dynamic> jsonSchema) {
     final type = _getSchemaType(jsonSchema['type']);
 
     return switch (type) {
-      SchemaType.object => Schema.object(
+      gemini.SchemaType.object => gemini.Schema.object(
         properties: _extractProperties(jsonSchema['properties'] ?? {}),
         requiredProperties: _extractRequiredProperties(jsonSchema['required']),
         description: jsonSchema['description'],
         nullable: jsonSchema['nullable'],
       ),
-      SchemaType.array => Schema.array(
+      gemini.SchemaType.array => gemini.Schema.array(
         items: _schemaObjectFrom(jsonSchema['items'] ?? {}),
         description: jsonSchema['description'],
         nullable: jsonSchema['nullable'],
       ),
-      SchemaType.string when jsonSchema['enum'] != null => Schema.enumString(
+      gemini.SchemaType.string when jsonSchema['enum'] != null => gemini
+          .Schema.enumString(
         enumValues: List<String>.from(jsonSchema['enum']),
         description: jsonSchema['description'],
         nullable: jsonSchema['nullable'],
       ),
-      SchemaType.string => Schema.string(
+      gemini.SchemaType.string => gemini.Schema.string(
         description: jsonSchema['description'],
         nullable: jsonSchema['nullable'],
       ),
-      SchemaType.number => Schema.number(
-        description: jsonSchema['description'],
-        nullable: jsonSchema['nullable'],
-        format: jsonSchema['format'],
-      ),
-      SchemaType.integer => Schema.integer(
+      gemini.SchemaType.number => gemini.Schema.number(
         description: jsonSchema['description'],
         nullable: jsonSchema['nullable'],
         format: jsonSchema['format'],
       ),
-      SchemaType.boolean => Schema.boolean(
+      gemini.SchemaType.integer => gemini.Schema.integer(
+        description: jsonSchema['description'],
+        nullable: jsonSchema['nullable'],
+        format: jsonSchema['format'],
+      ),
+      gemini.SchemaType.boolean => gemini.Schema.boolean(
         description: jsonSchema['description'],
         nullable: jsonSchema['nullable'],
       ),
     };
   }
 
-  static Map<String, Schema> _extractProperties(
+  static Map<String, gemini.Schema> _extractProperties(
     Map<String, dynamic> properties,
   ) {
-    final result = <String, Schema>{};
+    final result = <String, gemini.Schema>{};
     for (final entry in properties.entries) {
       result[entry.key] = _schemaObjectFrom(entry.value);
     }
@@ -105,14 +145,39 @@ class GeminiModel extends Model {
     return List<String>.from(required);
   }
 
-  static SchemaType _getSchemaType(String? typeString) => switch (typeString
-      ?.toLowerCase()) {
-    'string' => SchemaType.string,
-    'number' => SchemaType.number,
-    'integer' => SchemaType.integer,
-    'boolean' => SchemaType.boolean,
-    'array' => SchemaType.array,
-    'object' => SchemaType.object,
-    _ => SchemaType.object, // Default to object if type is not specified
+  static gemini.SchemaType _getSchemaType(
+    String? typeString,
+  ) => switch (typeString?.toLowerCase()) {
+    'string' => gemini.SchemaType.string,
+    'number' => gemini.SchemaType.number,
+    'integer' => gemini.SchemaType.integer,
+    'boolean' => gemini.SchemaType.boolean,
+    'array' => gemini.SchemaType.array,
+    'object' => gemini.SchemaType.object,
+    _ => gemini.SchemaType.object, // Default to object if type is not specified
   };
+
+  static List<gemini.Tool> _toolsFrom(Iterable<Tool> tools) {
+    final result = <gemini.Tool>[];
+
+    for (final tool in tools) {
+      // Convert inputType to a Schema object using the existing method
+      final parameters =
+          tool.inputType != null
+              ? _schemaObjectFrom(tool.inputType!)
+              : gemini.Schema.object(properties: {});
+
+      // Create a function declaration for the tool
+      final functionDeclaration = gemini.FunctionDeclaration(
+        tool.name,
+        tool.description ?? '',
+        parameters,
+      );
+
+      // Add the tool with its function declaration
+      result.add(gemini.Tool(functionDeclarations: [functionDeclaration]));
+    }
+
+    return result;
+  }
 }

@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
+import 'package:example/time_and_temp.dart';
 import 'package:example/town_and_country.dart';
 
 // Provider? get provider => GeminiProvider();
@@ -97,4 +98,50 @@ Future<void> outputTypeExampleWithSotiSchema() async {
   );
 
   print(result.output);
+}
+
+Future<void> toolExample() async {
+  print('\ntoolExample: $displayName');
+
+  final agent = Agent(
+    provider: provider,
+    model: model,
+    tools: [
+      Tool(
+        name: 'time',
+        description: 'Get the current time in a given time zone',
+        inputType: TimeFunctionInput.schemaMap,
+        onCall: _onTime,
+      ),
+      Tool(
+        name: 'temp',
+        description: 'Get the current temperature in a given location',
+        inputType: TempFunctionInput.schemaMap,
+        onCall: _onTemp,
+      ),
+    ],
+  );
+
+  final result = await agent.run(
+    'What is the time and temperature in New York City?',
+  );
+
+  print(result.output);
+}
+
+// TODO: implement this using the timezone package
+Future<Map<String, dynamic>?> _onTime(Map<String, dynamic> input) async {
+  final timeInput = TimeFunctionInput.fromJson(input);
+  final timeZoneName = timeInput.timeZoneName;
+  final location = timeInput.timeZone;
+  final time = DateTime.now().toIso8601String();
+  return TimeFunctionOutput(time: time).toJson();
+}
+
+// TODO: implement this using a free weather API
+Future<Map<String, dynamic>?> _onTemp(Map<String, dynamic> input) async {
+  final tempInput = TempFunctionInput.fromJson(input);
+  final location = tempInput.location;
+  const temp = 70;
+  return TempFunctionOutput(temperature: temp).toJson();
 }

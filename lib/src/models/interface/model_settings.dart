@@ -1,3 +1,5 @@
+import '../../agent/tool.dart';
+
 /// Settings used to configure a model.
 ///
 /// Contains configuration options that are common across different model
@@ -7,7 +9,11 @@ class ModelSettings {
   ///
   /// The [systemPrompt] is the system prompt to use for the model.
   /// The [outputType] is an optional JSON schema for structured outputs.
-  ModelSettings({required this.systemPrompt, this.outputType});
+  ModelSettings({
+    required this.systemPrompt,
+    required this.outputType,
+    required this.tools,
+  });
 
   /// The system prompt to use for the model.
   ///
@@ -19,4 +25,7 @@ class ModelSettings {
   /// When provided, configures the model to return responses in JSON format
   /// that match this schema.
   final Map<String, dynamic>? outputType;
+
+  /// The tools to use for the model.
+  final Iterable<Tool>? tools;
 }
