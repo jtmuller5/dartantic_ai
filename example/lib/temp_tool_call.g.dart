@@ -43,16 +43,3 @@ const _$TempFunctionInputSchemaMap = <String, dynamic>{
   r'required': [r'location'],
   r'$defs': {}
 };
-
-const _$TempFunctionOutputSchemaMap = <String, dynamic>{
-  r'$schema': r'https://json-schema.org/draft/2020-12/schema',
-  r'type': r'object',
-  r'properties': {
-    r'temperature': {
-      r'type': r'number',
-      r'description': r'/// The temperature in degrees Fahrenheit'
-    }
-  },
-  r'required': [r'temperature'],
-  r'$defs': {}
-};

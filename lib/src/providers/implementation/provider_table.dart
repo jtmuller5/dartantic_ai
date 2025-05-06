@@ -14,6 +14,16 @@ class ProviderTable {
           modelName: settings.modelName,
           apiKey: settings.apiKey,
         ),
+    'gemini':
+        (settings) => GeminiProvider(
+          modelName: settings.modelName,
+          apiKey: settings.apiKey,
+        ),
+    'google':
+        (settings) => GeminiProvider(
+          modelName: settings.modelName,
+          apiKey: settings.apiKey,
+        ),
     'google-gla':
         (settings) => GeminiProvider(
           modelName: settings.modelName,

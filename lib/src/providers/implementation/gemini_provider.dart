@@ -25,9 +25,9 @@ class GeminiProvider extends Provider {
   /// The name of the environment variable that contains the API key.
   static const apiKeyName = 'GEMINI_API_KEY';
 
-  /// The display name for this provider, in the format "google-gla:modelName".
+  /// The display name for this provider, in the format "google:modelName".
   @override
-  String get displayName => 'google-gla:$modelName';
+  String get displayName => 'google:$modelName';
 
   /// The name of the Gemini model to use.
   final String modelName;

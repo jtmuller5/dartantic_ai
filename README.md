@@ -171,3 +171,94 @@ void main() {
   print(result.output); // Output: TownAndCountry(town: Chicago, country: United States)
 }
 ```
+
+## Typed Tool Calling
+
+Imagine you'd like to provided your AI Agent with some tools to call. You'd like
+those to be typed without manually creating a JSON Schema object to define the
+parameters. You can define the parameters to your tool with a Dart class:
+
+```dart
+@SotiSchema()
+@JsonSerializable()
+class TimeFunctionInput {
+  TimeFunctionInput({required this.timeZoneName});
+  
+  /// The name of the time zone to get the time in (e.g. "America/New_York")
+  final String timeZoneName;
+
+  static TimeFunctionInput fromJson(Map<String, dynamic> json) =>
+      _$TimeFunctionInputFromJson(json);
+
+  @jsonSchema
+  static Map<String, dynamic> get schemaMap => _$TimeFunctionInputSchemaMap;
+}
+```
+The use of the JSON serializer and Soti Schema annotations causes the creation
+of a schemaMap property that provides a JSON schema at runtime that defines our
+tool:
+
+```dart
+Future<void> toolExample() async {
+  final agent = Agent(
+    model: 'openai:gpt-4o',
+    systemPrompt: 'Show the time as local time.',
+    tools: [
+      Tool(
+        name: 'time',
+        description: 'Get the current time in a given time zone',
+        inputType: TimeFunctionInput.schemaMap,
+        onCall: onTimeCall,
+      ),
+    ],
+  );
+
+  final result = await agent.run(
+    'What is time is it in New York City?',
+  );
+
+  print(result.output);
+}
+```
+
+This code defines a tool that gets the current time for a particular time zone.
+The tool's input arguments are defined via the generated JSON schema.
+
+The tool doesn't need to define a schema for the output of the tool -- the LLM
+will take whatever data you give it -- but we still need to be able to convert
+the output type to JSON:
+
+```dart
+@JsonSerializable()
+class TimeFunctionOutput {
+  TimeFunctionOutput({required this.time});
+
+  /// The time in the given time zone
+  final DateTime time;
+
+  Map<String, dynamic> toJson() => _$TimeFunctionOutputToJson(this);
+}
+```
+
+We can now use the JSON serialization support in these two types to implement
+the tool call function:
+
+```dart
+Future<Map<String, Object?>?> onTimeCall(Map<String, Object?> input) async {
+  // parse the JSON input into a type-safe object
+  final timeInput = TimeFunctionInput.fromJson(input);
+
+  tz_data.initializeTimeZones();
+  final location = tz.getLocation(timeInput.timeZoneName);
+  final now = tz.TZDateTime.now(location);
+
+  // construct a type-safe object, then translate to JSON to return
+  return TimeFunctionOutput(time: now).toJson();
+}
+```
+
+In this way, we use the tool input type to define the format of the JSON we're
+expecting from the LLM and to decode the input JSON into a typed object for our
+implementation of the `onTimeCall` function. Likewise, we use the tool output
+type to gather the returned data before encoding that back into JSON for the
+return to the LLM.

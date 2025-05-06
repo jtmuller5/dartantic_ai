@@ -8,7 +8,6 @@ part 'temp_tool_call.g.dart';
 
 @SotiSchema()
 @JsonSerializable()
-/// Get the current temperature in a given location
 class TempFunctionInput {
   TempFunctionInput({required this.location});
 
@@ -22,9 +21,7 @@ class TempFunctionInput {
   static Map<String, dynamic> get schemaMap => _$TempFunctionInputSchemaMap;
 }
 
-@SotiSchema()
 @JsonSerializable()
-/// The current temperature in a given location
 class TempFunctionOutput {
   TempFunctionOutput({required this.temperature});
 
@@ -32,9 +29,6 @@ class TempFunctionOutput {
   final double temperature;
 
   Map<String, dynamic> toJson() => _$TempFunctionOutputToJson(this);
-
-  @jsonSchema
-  static Map<String, dynamic> get schemaMap => _$TempFunctionOutputSchemaMap;
 }
 
 /// Use free, API-key-free services to look up the weather for a given location.

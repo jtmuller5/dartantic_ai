@@ -7,7 +7,6 @@ part 'time_tool_call.g.dart';
 
 @SotiSchema()
 @JsonSerializable()
-/// Get the current time in a given time zone
 class TimeFunctionInput {
   TimeFunctionInput({required this.timeZoneName});
 
@@ -21,9 +20,7 @@ class TimeFunctionInput {
   static Map<String, dynamic> get schemaMap => _$TimeFunctionInputSchemaMap;
 }
 
-@SotiSchema()
 @JsonSerializable()
-/// The current time in a given time zone
 class TimeFunctionOutput {
   TimeFunctionOutput({required this.time});
 
@@ -31,9 +28,6 @@ class TimeFunctionOutput {
   final DateTime time;
 
   Map<String, dynamic> toJson() => _$TimeFunctionOutputToJson(this);
-
-  @jsonSchema
-  static Map<String, dynamic> get schemaMap => _$TimeFunctionOutputSchemaMap;
 }
 
 /// Use the timezone package to get the current time in a given timezone.

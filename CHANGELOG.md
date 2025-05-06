@@ -1,3 +1,10 @@
+## 0.2.0
+
+- Define tools and their inputs/outputs easily
+- Automatically generate LLM-specific tool/output schemas
+- Allow for a model descriptor string that just contains a family name so
+  that the provider can choose the default model.
+
 ## 0.1.0
 
 - Multi-Model Support (just Gemini and OpenAI models so far)

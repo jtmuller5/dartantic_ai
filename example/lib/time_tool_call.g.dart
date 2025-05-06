@@ -43,17 +43,3 @@ const _$TimeFunctionInputSchemaMap = <String, dynamic>{
   r'required': [r'timeZoneName'],
   r'$defs': {}
 };
-
-const _$TimeFunctionOutputSchemaMap = <String, dynamic>{
-  r'$schema': r'https://json-schema.org/draft/2020-12/schema',
-  r'type': r'object',
-  r'properties': {
-    r'time': {
-      r'type': r'string',
-      r'format': r'date-time',
-      r'description': r'/// The time in the given time zone'
-    }
-  },
-  r'required': [r'time'],
-  r'$defs': {}
-};
