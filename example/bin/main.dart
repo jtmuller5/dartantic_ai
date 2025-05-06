@@ -8,13 +8,13 @@ import 'package:example/time_and_temp.dart';
 import 'package:example/time_tool_call.dart';
 import 'package:example/town_and_country.dart';
 
-Provider? get provider => GeminiProvider();
+// Provider? get provider => GeminiProvider();
 // Provider? get provider => OpenAiProvider();
-// Provider? get provider => null;
+Provider? get provider => null;
 
-// String? get model => 'google-gla:gemini-2.0-flash';
+String? get model => 'google-gla:gemini-2.0-flash';
 // String? get model => 'openai:gpt-4o';
-String? get model => null;
+// String? get model => null;
 
 String get displayName => provider?.displayName ?? model ?? 'ERROR';
 

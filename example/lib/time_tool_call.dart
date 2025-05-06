@@ -3,19 +3,15 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'time_and_temp.dart';
 
-Future<Map<String, dynamic>?> onTimeCall(Map<String, dynamic> input) async {
-  // Initialize timezone data
-  tz_data.initializeTimeZones();
-
+/// Use the timezone package to get the current time in a given timezone.
+Future<Map<String, Object?>?> onTimeCall(Map<String, Object?> input) async {
+  // parse the JSON input into a type-safe object
   final timeInput = TimeFunctionInput.fromJson(input);
-  final timeZoneName = timeInput.timeZoneName;
 
-  // Get the timezone location
-  final location = tz.getLocation(timeZoneName);
-
-  // Get current time in the specified timezone
+  tz_data.initializeTimeZones();
+  final location = tz.getLocation(timeInput.timeZoneName);
   final now = tz.TZDateTime.now(location);
 
-  // Return the time as a DateTime object
+  // construct a type-safe object, then translate to JSON to return
   return TimeFunctionOutput(time: now).toJson();
 }

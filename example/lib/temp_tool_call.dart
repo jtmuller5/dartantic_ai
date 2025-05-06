@@ -4,14 +4,14 @@ import 'package:http/http.dart' as http;
 
 import 'time_and_temp.dart';
 
-Future<Map<String, dynamic>?> onTempCall(Map<String, dynamic> input) async {
+/// Use free, API-key-free services to look up the weather for a given location.
+Future<Map<String, Object?>?> onTempCall(Map<String, Object?> input) async {
+  // parse the JSON input into a type-safe object
   final tempInput = TempFunctionInput.fromJson(input);
-  final location = tempInput.location;
 
   // Use Nominatim API (OpenStreetMap) for better geocoding of vague place names
-  final encodedLocation = Uri.encodeComponent(location);
   final geocodeUrl = Uri.parse(
-    'https://nominatim.openstreetmap.org/search?q=$encodedLocation&format=json&limit=1',
+    'https://nominatim.openstreetmap.org/search?q=${tempInput.location}&format=json&limit=1',
   );
 
   // Add a user agent header as required by Nominatim's usage policy
@@ -28,25 +28,22 @@ Future<Map<String, dynamic>?> onTempCall(Map<String, dynamic> input) async {
   }
 
   final geocodeData = jsonDecode(geocodeResponse.body) as List<dynamic>;
-
   if (geocodeData.isEmpty) {
-    throw Exception('Location not found: $location');
+    throw Exception('Location not found: ${tempInput.location}');
   }
 
-  // Extract latitude and longitude from the first result
+  // ignore: avoid_dynamic_calls
+  final lat = double.parse(geocodeData[0]['lat'] as String);
 
   // ignore: avoid_dynamic_calls
-  final latitude = double.parse(geocodeData[0]['lat'] as String);
-  // ignore: avoid_dynamic_calls
-  final longitude = double.parse(geocodeData[0]['lon'] as String);
+  final long = double.parse(geocodeData[0]['lon'] as String);
 
-  // Open-Meteo API doesn't require an API key
+  // Use Open-Meteo API for weather data given a latitude and longitude
   final weatherUrl = Uri.parse(
-    'https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m&temperature_unit=fahrenheit',
+    'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$long&current=temperature_2m&temperature_unit=fahrenheit',
   );
 
   final weatherResponse = await http.get(weatherUrl);
-
   if (weatherResponse.statusCode != 200) {
     throw Exception(
       'Weather API failed: ${weatherResponse.statusCode}: '
@@ -56,9 +53,9 @@ Future<Map<String, dynamic>?> onTempCall(Map<String, dynamic> input) async {
 
   final weatherData = jsonDecode(weatherResponse.body);
 
-  // Extract temperature in Fahrenheit
   // ignore: avoid_dynamic_calls
   final temperature = weatherData['current']['temperature_2m'] as double;
 
+  // construct a type-safe object, then translate to JSON to return
   return TempFunctionOutput(temperature: temperature).toJson();
 }
