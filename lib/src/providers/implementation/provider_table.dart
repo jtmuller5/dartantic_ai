@@ -1,4 +1,4 @@
-import '../../models/implementations/gemini_model.dart';
+import '../../models/implementations/langchain_gemini_model.dart';
 import '../../platform/platform.dart' as platform;
 import '../providers.dart';
 
@@ -15,10 +15,9 @@ class ProviderTable {
         (settings) => OpenAiProvider(
           modelName: settings.modelName,
           embeddingModelName: settings.embeddingModelName,
-          apiKey: settings.apiKey,
+          apiKey: settings.apiKey ?? platform.getEnv('OPENAI_API_KEY'),
           baseUrl: settings.baseUrl,
           caps: ProviderCaps.all,
-          parallelToolCalls: true,
         ),
     'openrouter':
         (settings) => OpenAiProvider(
@@ -29,25 +28,25 @@ class ProviderTable {
           baseUrl:
               settings.baseUrl ?? Uri.parse('https://openrouter.ai/api/v1'),
           caps: ProviderCaps.allExcept({ProviderCaps.embeddings}),
-          parallelToolCalls: true,
         ),
     'gemini-compat':
         // we're using the OpenAI-compatible Gemini API, but we still have to
         // use Google model names and API keys
         (settings) => OpenAiProvider(
           name: 'gemini-compat',
-          modelName: settings.modelName ?? GeminiModel.defaultModelName,
+          modelName:
+              settings.modelName ?? LangchainGeminiModel.defaultModelName,
           embeddingModelName:
               settings.embeddingModelName ??
-              GeminiModel.defaultEmbeddingModelName,
-          apiKey: settings.apiKey ?? platform.getEnv(GeminiProvider.apiKeyName),
+              LangchainGeminiModel.defaultEmbeddingModelName,
+          apiKey: settings.apiKey ?? 
+                  platform.getEnv('GEMINI_API_KEY'),
           baseUrl:
               settings.baseUrl ??
               Uri.parse(
                 'https://generativelanguage.googleapis.com/v1beta/openai',
               ),
           caps: ProviderCaps.all,
-          parallelToolCalls: false,
         ),
     'google': (settings) {
       if (settings.baseUrl != null) {
@@ -57,7 +56,8 @@ class ProviderTable {
       return GeminiProvider(
         modelName: settings.modelName,
         embeddingModelName: settings.embeddingModelName,
-        apiKey: settings.apiKey,
+        apiKey: settings.apiKey ?? 
+                platform.getEnv('GEMINI_API_KEY'),
       );
     },
   };
@@ -84,4 +84,5 @@ class ProviderTable {
     if (providerFactory != null) return providerFactory(settings);
     throw ArgumentError('Unsupported provider: $name');
   }
+
 }

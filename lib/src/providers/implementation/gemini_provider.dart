@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../../models/implementations/gemini_model.dart' show GeminiModel;
+import '../../models/implementations/langchain_gemini_model.dart';
 import '../../models/interface/model.dart';
 import '../../models/interface/model_settings.dart';
 import '../../platform/platform.dart' as platform;
@@ -10,25 +10,26 @@ import '../../utils.dart';
 import '../interface/provider.dart';
 import '../interface/provider_caps.dart';
 
-/// Provider for Google's Gemini AI models.
+/// Provider for Google's Gemini AI models using LangChain.
 ///
-/// This provider creates instances of [GeminiModel] using the specified
-/// model name and API key.
+/// This provider creates instances of [LangchainGeminiModel] with full
+/// multi-step tool calling support through the LangChain framework.
 class GeminiProvider extends Provider {
   /// Creates a new [GeminiProvider] with the given parameters.
   ///
   /// The [modelName] is the name of the Gemini model to use.
-  /// If not provided, [GeminiModel.defaultModelName] is used.
+  /// If not provided, [LangchainGeminiModel.defaultModelName] is used.
   /// The [embeddingModelName] is the name of the Gemini embedding model to use.
-  /// If not provided, [GeminiModel.defaultEmbeddingModelName] is used.
+  /// If not provided, [LangchainGeminiModel.defaultEmbeddingModelName] is used.
   /// The [apiKey] is the API key to use for authentication.
   /// If not provided, it's retrieved from the environment.
+  /// The [temperature] controls the randomness of responses.
   GeminiProvider({
     this.modelName,
     this.embeddingModelName,
     String? apiKey,
     this.temperature,
-  }) : apiKey = apiKey ?? platform.getEnv(apiKeyName);
+  }) : apiKey = _resolveApiKey(apiKey);
 
   /// The name of the environment variable that contains the API key.
   static const apiKeyName = 'GEMINI_API_KEY';
@@ -51,17 +52,20 @@ class GeminiProvider extends Provider {
   /// Creates a [Model] instance using this provider's configuration.
   ///
   /// The [settings] parameter contains additional configuration options
-  /// for the model, such as the system prompt and output type.
+  /// for the model, such as the system prompt, output schema, and tools.
+  /// 
+  /// This implementation uses LangChain with full multi-step tool calling
+  /// support. Tools are executed through an iterative agent loop that
+  /// can handle complex multi-step workflows.
   @override
-  Model createModel(ModelSettings settings) => GeminiModel(
+  Model createModel(ModelSettings settings) => LangchainGeminiModel(
     modelName: modelName,
     embeddingModelName: embeddingModelName,
     apiKey: apiKey,
-    outputSchema: settings.outputSchema,
     systemPrompt: settings.systemPrompt,
-    temperature: temperature,
+    temperature: temperature ?? settings.temperature,
     tools: settings.tools,
-    toolCallingMode: settings.toolCallingMode,
+    outputSchema: settings.outputSchema,
   );
 
   @override
@@ -123,6 +127,20 @@ class GeminiProvider extends Provider {
     }
 
     return allModels;
+  }
+
+  /// Resolves the API key for this provider.
+  /// 
+  /// Checks explicit key first, then falls back to environment variables.
+  /// platform.getEnv() already checks Agent.environment before system environment.
+  static String _resolveApiKey(String? providedKey) {
+    if (providedKey != null && providedKey.isNotEmpty) {
+      return providedKey;
+    }
+    
+    return platform.getEnv('GEMINI_API_KEY') ??
+           platform.getEnv('GOOGLE_API_KEY') ??
+           '';
   }
 
   static bool _isStable(String modelName) {

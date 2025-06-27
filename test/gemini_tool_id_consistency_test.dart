@@ -214,11 +214,10 @@ void main() {
       },
     );
 
-    test('should handle single-step mode with consistent IDs', () async {
+    test('should handle multi-step tool calling with consistent IDs', () async {
       final geminiAgent = Agent(
         'gemini',
         tools: testTools,
-        toolCallingMode: ToolCallingMode.singleStep,
       );
 
       var conversationHistory = <Message>[];
@@ -240,14 +239,14 @@ void main() {
           toolParts.where((p) => p.kind == ToolPartKind.result).toList();
 
       print(
-        'Single-step mode: ${toolCalls.length} calls, ${toolResults.length} results',
+        'Multi-step tool calling: ${toolCalls.length} calls, ${toolResults.length} results',
       );
 
-      // In single-step mode, should still have matching pairs
+      // Tool calls and results should always have matching pairs
       expect(
         toolCalls.length,
         equals(toolResults.length),
-        reason: 'Even in single-step mode, calls and results should match',
+        reason: 'Tool calls and results should match',
       );
 
       // Validate ID consistency
@@ -257,7 +256,7 @@ void main() {
         expect(
           matchingResult,
           isNotNull,
-          reason: 'Single-step mode should still maintain ID consistency',
+          reason: 'All tool calls should have matching results with consistent IDs',
         );
         expect(matchingResult!.name, equals(call.name));
       }

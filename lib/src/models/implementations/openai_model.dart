@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:json_schema/json_schema.dart';
+import 'package:langchain_openai/langchain_openai.dart';
 import 'package:openai_dart/openai_dart.dart' as openai;
 import 'package:uuid/uuid.dart';
 
@@ -32,13 +33,11 @@ class OpenAiModel extends Model {
     JsonSchema? outputSchema,
     String? systemPrompt,
     Iterable<Tool>? tools,
-    ToolCallingMode? toolCallingMode,
     double? temperature,
     bool parallelToolCalls = true,
   }) : generativeModelName = modelName ?? defaultModelName,
        embeddingModelName = embeddingModelName ?? defaultEmbeddingModelName,
        _tools = tools?.toList(),
-       _toolCallingMode = toolCallingMode ?? ToolCallingMode.multiStep,
        _systemPrompt = systemPrompt,
        _parallelToolCalls = parallelToolCalls,
        _client = openai.OpenAIClient(
@@ -63,7 +62,6 @@ class OpenAiModel extends Model {
   final openai.ResponseFormat? _responseFormat;
   final String? _systemPrompt;
   final List<Tool>? _tools;
-  final ToolCallingMode _toolCallingMode;
   final double? _temperature;
   final Map<String, String> _toolCallIdToName = {};
   final bool _parallelToolCalls;
@@ -85,13 +83,9 @@ class OpenAiModel extends Model {
     _toolCallIdToName.clear();
 
     final hasTools = _tools?.isNotEmpty ?? false;
-    final parallelToolCallsEnabled =
-        hasTools &&
-        _toolCallingMode == ToolCallingMode.multiStep &&
-        _parallelToolCalls;
+    final parallelToolCallsEnabled = hasTools && _parallelToolCalls;
     log.fine(
-      '[OpenAiModel] Starting stream with toolCallingMode: $_toolCallingMode, '
-      'parallelToolCalls: $parallelToolCallsEnabled',
+      '[OpenAiModel] Starting stream with parallelToolCalls: $parallelToolCallsEnabled',
     );
 
     // Process the incoming message history to extract and register all tool
@@ -295,29 +289,11 @@ class OpenAiModel extends Model {
         if (newToolCalls.isNotEmpty) {
           toolCalls.addAll(newToolCalls);
 
-          // If we're in single-step mode, break out after one iteration
-          if (_toolCallingMode == ToolCallingMode.singleStep) {
-            log.fine(
-              '[OpenAiModel] Single-step mode: breaking out of tool calling '
-              'loop',
-            );
-            toolCalls.clear(); // Clear any pending tool calls
-            break;
-          }
 
           continue;
         }
       }
 
-      // If we're in single-step mode and we've completed one iteration, break
-      // out
-      if (_toolCallingMode == ToolCallingMode.singleStep) {
-        log.fine(
-          '[OpenAiModel] Single-step mode: breaking out of tool calling loop',
-        );
-        toolCalls.clear(); // Clear any pending tool calls
-        break;
-      }
 
       // No more tool calls - we're done!
       break;
@@ -336,26 +312,75 @@ class OpenAiModel extends Model {
       throw Exception('Embeddings are not supported by this provider.');
     }
 
-    final request = openai.CreateEmbeddingRequest(
-      model: openai.EmbeddingModel.modelId(embeddingModelName),
-      input: openai.EmbeddingInput.string(text),
+    log.fine(
+      '[OpenAiModel] Creating embedding for text (length: ${text.length}, '
+      'type: $type)',
     );
 
-    final response = await _client.createEmbedding(request: request);
-    final embeddingVector = response.data.first.embedding;
-
-    if (embeddingVector is openai.EmbeddingVectorListDouble) {
-      return Float64List.fromList(embeddingVector.value);
-    } else if (embeddingVector is openai.EmbeddingVectorString) {
-      // Decode base64 encoded embedding to float values
-      final base64String = embeddingVector.value;
-      final bytes = base64Decode(base64String);
-      return Float64List.view(bytes.buffer);
-    } else {
-      throw UnsupportedError(
-        'Unknown embedding vector type: '
-        '${embeddingVector.runtimeType}',
+    // Try LangChain embeddings first for improved functionality
+    try {
+      final langchainEmbeddings = OpenAIEmbeddings(
+        apiKey: _client.apiKey,
+        // Use the same base URL if available
+        baseUrl: _client.baseUrl ?? 'https://api.openai.com/v1',
       );
+      
+      // Use LangChain embeddings API
+      // Note: LangChain Dart currently uses embedQuery for both document
+      // and query types. This may be enhanced in future versions of the
+      // LangChain Dart package
+      final result = await langchainEmbeddings.embedQuery(text);
+      
+      log.fine(
+        '[OpenAiModel] Generated embedding with ${result.length} dimensions '
+        'using LangChain',
+      );
+      return Float64List.fromList(result);
+    } on Exception catch (e) {
+      log.warning(
+        '[OpenAiModel] LangChain embedding failed, falling back to direct '
+        'OpenAI API: $e',
+      );
+      
+      // Fallback to current direct OpenAI implementation
+      try {
+        final request = openai.CreateEmbeddingRequest(
+          model: openai.EmbeddingModel.modelId(embeddingModelName),
+          input: openai.EmbeddingInput.string(text),
+        );
+
+        final response = await _client.createEmbedding(request: request);
+        final embeddingVector = response.data.first.embedding;
+
+        if (embeddingVector is openai.EmbeddingVectorListDouble) {
+          log.fine(
+            '[OpenAiModel] Generated embedding with '
+            '${embeddingVector.value.length} dimensions using direct OpenAI API',
+          );
+          return Float64List.fromList(embeddingVector.value);
+        } else if (embeddingVector is openai.EmbeddingVectorString) {
+          // Decode base64 encoded embedding to float values
+          final base64String = embeddingVector.value;
+          final bytes = base64Decode(base64String);
+          final embedding = Float64List.view(bytes.buffer);
+          log.fine(
+            '[OpenAiModel] Generated embedding with ${embedding.length} '
+            'dimensions using direct OpenAI API (base64)',
+          );
+          return embedding;
+        } else {
+          throw UnsupportedError(
+            'Unknown embedding vector type: '
+            '${embeddingVector.runtimeType}',
+          );
+        }
+      } catch (fallbackError) {
+        log.severe(
+          '[OpenAiModel] Both LangChain and direct OpenAI embedding failed: '
+          '$fallbackError',
+        );
+        rethrow;
+      }
     }
   }
 

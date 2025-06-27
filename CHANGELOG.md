@@ -1,3 +1,16 @@
+## 0.9.7
+
+- **Breaking Change**: Unified providers to use LangChain exclusively
+  - Reimplemented `GeminiProvider` and `OpenAiProvider` to use LangChain classes internally
+  - Removed separate `LangchainOpenAiProvider` and `LangchainGoogleProvider` classes
+  - All providers now use multi-step tool calling through LangChain's agent approach
+  - Removed `parallelToolCalls` parameter as tool calling is now handled by LangChain
+  - Simplified codebase by removing legacy single-step tool calling logic
+- **Breaking Change**: Removed `ToolCallingMode` enum and related conditional logic
+  - All tool call integrations now use multi-step (sequential) tool calling exclusively
+  - This simplifies the codebase and ensures consistent tool calling behavior across all providers
+  - `toolCallingMode` parameter has been removed from all Agent and Model constructors
+
 ## 0.9.6
 
 - fixed an issue where the OpenAI model only processed the last tool result when

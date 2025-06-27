@@ -44,6 +44,7 @@ void main() async {
 
 ## Key Features
 
+- **Multi-Step Tool Calling** - Autonomous sequential tool execution for complex workflows
 - **Streaming Output** - Real-time response generation
 - **Typed Tool Calling** - Type-safe function definitions and execution
 - **Multi-media Input** - Process text, images, and files

@@ -131,7 +131,6 @@ void main() {
           final agent = Agent(
             'openai',
             tools: testTools,
-            toolCallingMode: ToolCallingMode.multiStep,
           );
 
           await agent.runWithRetries(
@@ -150,26 +149,6 @@ void main() {
           expect(toolCallLog.keys, hasLength(2));
         });
 
-        test('should call only one tool in single-step mode', () async {
-          final agent = Agent(
-            'openai',
-            tools: testTools,
-            toolCallingMode: ToolCallingMode.singleStep,
-          );
-
-          await agent.runWithRetries(
-            "IMPORTANT: First call the get_current_time tool, then use that information to call the find_events tool with today's date.",
-          );
-
-          // Verify only the first tool was called
-          expect(toolCallLog, containsPair('get_current_time', {}));
-
-          // The second tool should not be called in single-step mode
-          expect(toolCallLog, isNot(contains('find_events')));
-
-          // Verify only one tool was called
-          expect(toolCallLog.keys, hasLength(1));
-        });
       });
 
       group('Gemini Model', () {
@@ -177,7 +156,6 @@ void main() {
           final agent = Agent(
             'gemini',
             tools: testTools,
-            toolCallingMode: ToolCallingMode.multiStep,
             systemPrompt:
                 'You are a helpful assistant that can find events for a user. '
                 'Make sure to ground yourself in the current time and date. '
@@ -197,27 +175,6 @@ void main() {
 
           // Verify the total number of tool calls
           expect(toolCallLog.keys, hasLength(2));
-        });
-
-        test('should call only one tool in single-step mode', () async {
-          final agent = Agent(
-            'gemini',
-            tools: testTools,
-            toolCallingMode: ToolCallingMode.singleStep,
-          );
-
-          await agent.runWithRetries(
-            "IMPORTANT: First call the get_current_time tool, then use that information to call the find_events tool with today's date.",
-          );
-
-          // Verify only the first tool was called
-          expect(toolCallLog, containsPair('get_current_time', {}));
-
-          // The second tool should not be called in single-step mode
-          expect(toolCallLog, isNot(contains('find_events')));
-
-          // Verify only one tool was called
-          expect(toolCallLog.keys, hasLength(1));
         });
       });
     });

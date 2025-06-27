@@ -1,23 +1,22 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
-import 'package:json_schema/json_schema.dart';
+import 'package:langchain/langchain.dart';
+import 'package:langchain_google/langchain_google.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../agent/agent_response.dart';
 import '../../agent/embedding_type.dart';
-import '../../agent/tool.dart';
-import '../../json_schema_extension.dart';
+import '../../agent/tool.dart' as ai_tool;
 import '../../message.dart';
 import '../../providers/interface/provider_caps.dart';
 import '../../utils.dart';
 import '../interface/model.dart';
-import '../interface/model_settings.dart';
 
-/// Implementation of [Model] that uses Google's Gemini API.
+/// Implementation of [Model] that uses Google's Gemini API via LangChain.
 ///
 /// This model handles interaction with Gemini models, supporting both
-/// standard text responses and structured JSON schema responses.
+/// standard text responses and tool calling.
 class GeminiModel extends Model {
   /// Creates a new [GeminiModel] with the given parameters.
   ///
@@ -30,30 +29,23 @@ class GeminiModel extends Model {
     required String apiKey,
     String? modelName,
     String? embeddingModelName,
-    JsonSchema? outputSchema,
     String? systemPrompt,
-    Iterable<Tool>? tools,
+    Iterable<ai_tool.Tool>? tools,
     double? temperature,
-    ToolCallingMode? toolCallingMode,
   }) : generativeModelName = modelName ?? defaultModelName,
        embeddingModelName = embeddingModelName ?? defaultEmbeddingModelName,
-       _apiKey = apiKey,
        _tools = tools?.toList(),
-       _toolCallingMode = toolCallingMode ?? ToolCallingMode.multiStep,
-       _model = gemini.GenerativeModel(
+       _systemPrompt = systemPrompt,
+       _llm = ChatGoogleGenerativeAI(
          apiKey: apiKey,
-         model: modelName ?? defaultModelName,
-         generationConfig:
-             outputSchema == null
-                 ? null
-                 : gemini.GenerationConfig(
-                   responseMimeType: 'application/json',
-                   responseSchema: _geminiSchemaFrom(outputSchema),
-                   temperature: temperature,
-                 ),
-         systemInstruction:
-             systemPrompt != null ? gemini.Content.text(systemPrompt) : null,
-         tools: tools != null ? toolsFrom(tools).toList() : null,
+         defaultOptions: ChatGoogleGenerativeAIOptions(
+           model: modelName ?? defaultModelName,
+           temperature: temperature ?? 0.7,
+         ),
+       ),
+       _embeddings = GoogleGenerativeAIEmbeddings(
+         apiKey: apiKey,
+         model: embeddingModelName ?? defaultEmbeddingModelName,
        );
 
   /// The default model name to use if none is provided.
@@ -62,10 +54,10 @@ class GeminiModel extends Model {
   /// The default embedding model name to use if none is provided.
   static const defaultEmbeddingModelName = 'text-embedding-004';
 
-  late final gemini.GenerativeModel _model;
-  final String _apiKey;
-  final List<Tool>? _tools;
-  final ToolCallingMode _toolCallingMode;
+  final List<ai_tool.Tool>? _tools;
+  final String? _systemPrompt;
+  final ChatGoogleGenerativeAI _llm;
+  final GoogleGenerativeAIEmbeddings _embeddings;
 
   @override
   final String generativeModelName;
@@ -79,137 +71,22 @@ class GeminiModel extends Model {
     required Iterable<Message> messages,
     required Iterable<Part> attachments,
   }) async* {
-    // # Implementation Notes:
-    // ## Goal: Multi-Step Tool Calling for Gemini
-    // To enable Gemini models to perform multi-step tool calling isn't
-    // difficult, but it requires a loop.
-    //
-    // ## The Loop
-    // The loop is simple:
-    // - Send history + messages + tools to Gemini
-    // - Process streaming response, collecting tool calls
-    // - If tool calls found → execute them, add results to conversation,
-    //   continue loop
-    // - If no tool calls found -> return the final text message and we're done
-    //
-    // This is much simpler than the OpenAI approach, which requires a probe,
-    // since while we're processing the tool calls result(s) response from the
-    // model, it will return with the very next tool call. It doesn't just sit
-    // there waiting for another prompt to continue what it was doing.
     log.finer(
       '[GeminiModel] Starting stream with ${messages.length} messages, '
       'prompt length: ${prompt.length}',
     );
 
     log.fine(
-      '[GeminiModel] Starting stream with toolCallingMode: $_toolCallingMode',
+      '[GeminiModel] Starting stream with tools: ${_tools?.length ?? 0}',
     );
 
-    final history = _geminiHistoryFrom(messages).toList();
-    final chat = _model.startChat(history: history.isEmpty ? null : history);
-    final message = Message.user([TextPart(prompt), ...attachments]);
-    final stream = chat.sendMessageStream(message.geminiContent);
-
-    final chunks = <String>[];
-    final functionCalls = <gemini.FunctionCall>[];
-
-    await for (final chunk in stream) {
-      final text = chunk.text ?? '';
-      if (text.isNotEmpty) {
-        chunks.add(text);
-        log.finest('[GeminiModel] Yielding content: $text');
-        yield AgentResponse(output: text, messages: []);
-      }
-
-      // Collect function calls
-      if (chunk.functionCalls.isNotEmpty) {
-        final callsDesc = chunk.functionCalls
-            .map((fc) => '${fc.name}(${fc.args})')
-            .join(', ');
-        log.finest('[GeminiModel] Function calls received: $callsDesc');
-      }
-      functionCalls.addAll(chunk.functionCalls);
+    if (_tools == null || _tools.isEmpty) {
+      // No tools available, use simple LLM streaming
+      yield* _streamWithoutTools(prompt, messages, attachments);
+    } else {
+      // Tools available, implement tool calling loop
+      yield* _streamWithTools(prompt, messages, attachments);
     }
-
-    // output a blank response to include the final history, as the history
-    // won't be updated until after the stream is done
-    yield AgentResponse(output: '', messages: _messagesFrom(chat.history));
-
-    // Process function calls in a loop to handle multi-step tool calling
-    while (functionCalls.isNotEmpty) {
-      log.finest(
-        '[GeminiModel] Processing ${functionCalls.length} function calls',
-      );
-      final responses = <gemini.FunctionResponse>[];
-
-      for (final functionCall in functionCalls) {
-        log.fine(
-          '[GeminiModel] Calling tool: '
-          '${functionCall.name}(${functionCall.args})',
-        );
-
-        try {
-          final result = await _callTool(functionCall.name, functionCall.args);
-          responses.add(gemini.FunctionResponse(functionCall.name, result));
-          log.finer(
-            '[GeminiModel] Tool response: ${functionCall.name} = $result',
-          );
-        } on Exception catch (ex) {
-          log.severe('[GeminiModel] Error calling tool: $ex');
-          responses.add(
-            gemini.FunctionResponse(functionCall.name, {
-              'error': ex.toString(),
-            }),
-          );
-        }
-      }
-
-      // Send function responses back to the model using streaming
-      log.finest('[GeminiModel] Sending function responses back to model');
-      final stream = chat.sendMessageStream(
-        gemini.Content.functionResponses(responses),
-      );
-
-      // Clear old function calls and collect new response
-      functionCalls.clear();
-
-      // Stream the response as it comes in
-      await for (final chunk in stream) {
-        final text = chunk.text ?? '';
-        if (text.isNotEmpty) {
-          log.finest('[GeminiModel] Streaming after tools: $text');
-          yield AgentResponse(output: text, messages: []);
-        }
-
-        // Collect any new function calls from this response
-        if (chunk.functionCalls.isNotEmpty) {
-          final newCalls = chunk.functionCalls
-              .map((fc) => '${fc.name}(${fc.args})')
-              .join(', ');
-          log.finest('[GeminiModel] New function calls: $newCalls');
-          functionCalls.addAll(chunk.functionCalls);
-        }
-      }
-
-      if (functionCalls.isNotEmpty) {
-        final additionalCalls = functionCalls
-            .map((fc) => '${fc.name}(${fc.args})')
-            .join(', ');
-        log.finest('[GeminiModel] Additional function calls: $additionalCalls');
-      }
-
-      // If we're in single-step mode, break out of the loop after one iteration
-      if (_toolCallingMode == ToolCallingMode.singleStep) {
-        log.fine(
-          '[GeminiModel] Single-step mode: breaking out of tool calling loop',
-        );
-        functionCalls.clear(); // Clear any pending function calls
-        break;
-      }
-    }
-
-    // Yield final response with complete message history
-    yield AgentResponse(output: '', messages: _messagesFrom(chat.history));
   }
 
   @override
@@ -222,349 +99,294 @@ class GeminiModel extends Model {
       'type: $type)',
     );
 
-    final taskType = switch (type) {
-      EmbeddingType.document => gemini.TaskType.retrievalDocument,
-      EmbeddingType.query => gemini.TaskType.retrievalQuery,
-    };
-
-    // Create a model instance specifically for embeddings
-    final embeddingModel = gemini.GenerativeModel(
-      apiKey: _apiKey,
-      model: embeddingModelName,
-    );
-
-    final response = await embeddingModel.embedContent(
-      gemini.Content.text(text),
-      taskType: taskType,
-    );
-
-    final embedding = Float64List.fromList(response.embedding.values);
-    log.fine(
-      '[GeminiModel] Created embedding with ${embedding.length} dimensions',
-    );
-
-    return embedding;
+    try {
+      // Use LangChain embeddings API
+      // Note: LangChain Dart currently uses embedQuery for both document
+      // and query types. This may be enhanced in future versions of the
+      // LangChain Dart package
+      final result = await _embeddings.embedQuery(text);
+      
+      log.fine(
+        '[GeminiModel] Generated embedding with ${result.length} dimensions '
+        'using LangChain',
+      );
+      return Float64List.fromList(result);
+    } on Exception catch (e) {
+      log.severe(
+        '[GeminiModel] LangChain embedding failed: $e',
+      );
+      rethrow;
+    }
   }
 
-  Future<Map<String, dynamic>?> _callTool(
+  /// Stream LLM response without tool calling
+  Stream<AgentResponse> _streamWithoutTools(
+    String prompt,
+    Iterable<Message> messages,
+    Iterable<Part> attachments,
+  ) async* {
+    // Convert messages to LangChain format
+    final langchainMessages = _convertMessages(messages, prompt, attachments);
+    
+    // Create prompt value from messages
+    final promptValue = PromptValue.chat(langchainMessages);
+    
+    final responseBuffer = StringBuffer();
+    final stream = _llm.stream(promptValue);
+    await for (final chunk in stream) {
+      if (chunk.output.content.isNotEmpty) {
+        responseBuffer.write(chunk.output.content);
+        yield AgentResponse(output: chunk.output.content, messages: const []);
+      }
+    }
+
+    // Final response with complete message history including AI response
+    final aiResponse = responseBuffer.toString();
+    yield AgentResponse(
+      output: '',
+      messages: _buildMessageHistory(messages, prompt, aiResponse),
+    );
+  }
+
+  /// Stream LLM response with tool calling support
+  Stream<AgentResponse> _streamWithTools(
+    String prompt,
+    Iterable<Message> messages,
+    Iterable<Part> attachments,
+  ) async* {
+    final currentMessages = messages.toList();
+    var currentPrompt = prompt;
+    const maxIterations = 5; // Prevent infinite loops
+    var iterations = 0;
+    
+    while (iterations < maxIterations) {
+      iterations++;
+      
+      // Create tool calling prompt
+      final toolDescriptions = _tools?.map((tool) => 
+        '${tool.name}: ${tool.description ?? "No description"}')
+        .join('\n') ?? '';
+      
+      final systemPrompt = '''
+You are an AI assistant with access to tools. When you need to use a tool, respond with:
+TOOL_CALL: {"name": "tool_name", "args": {"arg1": "value1", "arg2": "value2"}}
+
+Available tools:
+$toolDescriptions
+
+User request: $currentPrompt''';
+      
+      // Convert messages to LangChain format
+      final langchainMessages = _convertMessages(currentMessages, '', const []);
+      
+      // Add the system prompt and user prompt
+      final promptValue = PromptValue.chat([
+        ChatMessage.system(systemPrompt),
+        ...langchainMessages,
+        if (currentPrompt.isNotEmpty) ChatMessage.humanText(currentPrompt),
+      ]);
+      
+      final responseBuffer = StringBuffer();
+      final stream = _llm.stream(promptValue);
+      await for (final chunk in stream) {
+        if (chunk.output.content.isNotEmpty) {
+          responseBuffer.write(chunk.output.content);
+          yield AgentResponse(output: chunk.output.content, messages: const []);
+        }
+      }
+
+      final aiResponse = responseBuffer.toString();
+      
+      // Check if the response contains a tool call
+      final toolCall = _parseToolCall(aiResponse);
+      if (toolCall != null) {
+        // Execute the tool
+        final toolResult = await _callTool(toolCall['name'], toolCall['args']);
+        
+        // Add proper ToolPart objects to message history
+        final toolCallId = const Uuid().v4();
+        currentMessages.add(Message.user([TextPart(currentPrompt)]));
+        currentMessages.add(Message.model([
+          TextPart(aiResponse),
+          ToolPart(
+            kind: ToolPartKind.call,
+            id: toolCallId,
+            name: toolCall['name'],
+            arguments: toolCall['args'],
+          ),
+          ToolPart(
+            kind: ToolPartKind.result,
+            id: toolCallId,
+            name: toolCall['name'],
+            result: toolResult,
+          ),
+        ]));
+        
+        // Continue with next iteration, asking for final response
+        currentPrompt = 'Please provide a final response based on the tool results.';
+      } else {
+        // No tool call found, this is the final response
+        currentMessages.add(Message.user([TextPart(prompt)]));
+        currentMessages.add(Message.model([TextPart(aiResponse)]));
+        
+        yield AgentResponse(
+          output: '',
+          messages: currentMessages,
+        );
+        return; // Exit the loop
+      }
+    }
+    
+    // If we reach here, we hit the max iterations limit
+    log.warning('[GeminiModel] Max tool calling iterations reached');
+    yield AgentResponse(
+      output: '',
+      messages: currentMessages,
+    );
+  }
+
+  /// Parse tool call from LLM response
+  Map<String, dynamic>? _parseToolCall(String response) {
+    try {
+      // Look for TOOL_CALL: pattern - use a simpler approach
+      final lines = response.split('\n');
+      for (final line in lines) {
+        if (line.contains('TOOL_CALL:')) {
+          // Extract everything after TOOL_CALL:
+          final toolCallIndex = line.indexOf('TOOL_CALL:');
+          final jsonStr = line.substring(toolCallIndex + 'TOOL_CALL:'.length).trim();
+          
+          // Check if we have a complete JSON object
+          if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
+            try {
+              final toolCall = json.decode(jsonStr) as Map<String, dynamic>;
+              if (toolCall.containsKey('name')) {
+                log.info('[GeminiModel] Successfully parsed tool call: ${toolCall['name']}');
+                return {
+                  'name': toolCall['name'] as String,
+                  'args': toolCall['args'] as Map<String, dynamic>? ?? {},
+                };
+              }
+            } catch (jsonError) {
+              log.warning('[GeminiModel] JSON parsing failed for "$jsonStr": $jsonError');
+            }
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      log.warning('[GeminiModel] Error parsing tool call: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> _callTool(
     String name,
     Map<String, dynamic> args,
   ) async {
-    Map<String, dynamic> result;
     try {
       // if the tool isn't found, return an error
       final tool = _tools?.where((t) => t.name == name).singleOrNull;
-      result =
-          tool == null
-              ? {'error': 'Tool $name not found'}
-              : await tool.onCall.call(args);
+      final result = tool == null
+          ? {'error': 'Tool $name not found'}
+          : await tool.onCall.call(args);
+      log.fine('Tool: $name($args)= $result');
+      return result;
     } on Exception catch (ex) {
       // if the tool call throws an error, return the exception message
-      result = {'error': ex.toString()};
+      final result = {'error': ex.toString()};
+      log.fine('Tool: $name($args)= $result');
+      return result;
+    }
+  }
+
+  /// Convert our message format to LangChain format
+  List<ChatMessage> _convertMessages(
+    Iterable<Message> messages,
+    String prompt,
+    Iterable<Part> attachments,
+  ) {
+    final result = <ChatMessage>[];
+
+    // Add system prompt if available
+    if (_systemPrompt != null && _systemPrompt.isNotEmpty) {
+      result.add(ChatMessage.system(_systemPrompt));
     }
 
-    log.fine('Tool: $name($args)= $result');
-    return result;
-  }
-
-  static gemini.Schema _geminiSchemaFrom(JsonSchema jsonSchema) {
-    final map = jsonSchema.toMap();
-    final schema = _schemaObjectFrom(map, map);
-    return schema;
-  }
-
-  static gemini.Schema _schemaObjectFrom(
-    Map<String, dynamic> jsonSchema,
-    Map<String, dynamic> rootSchema, {
-    bool isRequired = false,
-  }) {
-    // Handle $ref references
-    if (jsonSchema.containsKey(r'$ref')) {
-      final ref = jsonSchema[r'$ref'] as String;
-      if (ref.startsWith(r'#/$defs/')) {
-        final defName = ref.substring(8); // Remove '#/$defs/'
-        final defs = rootSchema[r'$defs'] as Map<String, dynamic>?;
-        if (defs != null && defs.containsKey(defName)) {
-          return _schemaObjectFrom(
-            defs[defName],
-            rootSchema,
-            isRequired: isRequired,
-          );
+    // Convert existing messages
+    for (final message in messages) {
+      final content = _extractTextContent(message.parts);
+      if (content.isNotEmpty) {
+        switch (message.role) {
+          case MessageRole.system:
+            if (result.isEmpty) {
+              result.add(ChatMessage.system(content));
+            }
+          case MessageRole.user:
+            result.add(ChatMessage.humanText(content));
+          case MessageRole.model:
+            result.add(ChatMessage.ai(content));
         }
       }
     }
 
-    final type = _getSchemaType(jsonSchema['type']);
-
-    return switch (type) {
-      gemini.SchemaType.object => gemini.Schema.object(
-        properties: _extractProperties(
-          jsonSchema['properties'] ?? {},
-          rootSchema,
-          requiredProperties:
-              _extractRequiredProperties(jsonSchema['required'])?.toSet(),
-        ),
-        requiredProperties:
-            _extractRequiredProperties(jsonSchema['required'])?.toList(),
-        description: jsonSchema['description'],
-        nullable: _getNullable(jsonSchema, isRequired),
-      ),
-      gemini.SchemaType.array => gemini.Schema.array(
-        items: _schemaObjectFrom(jsonSchema['items'] ?? {}, rootSchema),
-        description: jsonSchema['description'],
-        nullable: _getNullable(jsonSchema, isRequired),
-      ),
-      gemini.SchemaType.string when jsonSchema['enum'] != null => gemini
-          .Schema.enumString(
-        enumValues: List<String>.from(jsonSchema['enum']),
-        description: jsonSchema['description'],
-        nullable: _getNullable(jsonSchema, isRequired),
-      ),
-      gemini.SchemaType.string => gemini.Schema.string(
-        description: jsonSchema['description'],
-        nullable: _getNullable(jsonSchema, isRequired),
-      ),
-      gemini.SchemaType.number => gemini.Schema.number(
-        description: jsonSchema['description'],
-        nullable: _getNullable(jsonSchema, isRequired),
-        format: jsonSchema['format'],
-      ),
-      gemini.SchemaType.integer => gemini.Schema.integer(
-        description: jsonSchema['description'],
-        nullable: _getNullable(jsonSchema, isRequired),
-        format: jsonSchema['format'],
-      ),
-      gemini.SchemaType.boolean => gemini.Schema.boolean(
-        description: jsonSchema['description'],
-        nullable: _getNullable(jsonSchema, isRequired),
-      ),
-    };
-  }
-
-  static Map<String, gemini.Schema> _extractProperties(
-    Map<String, dynamic> properties,
-    Map<String, dynamic> rootSchema, {
-    Set<String>? requiredProperties,
-  }) {
-    final result = <String, gemini.Schema>{};
-    for (final entry in properties.entries) {
-      final isRequired = requiredProperties?.contains(entry.key) ?? false;
-      result[entry.key] = _schemaObjectFrom(
-        entry.value,
-        rootSchema,
-        isRequired: isRequired,
-      );
-    }
-    return result;
-  }
-
-  static Iterable<String>? _extractRequiredProperties(dynamic required) {
-    if (required == null) return null;
-    return List<String>.from(required);
-  }
-
-  static bool? _getNullable(Map<String, dynamic> jsonSchema, bool isRequired) {
-    // If explicitly set in schema, use that value
-    if (jsonSchema.containsKey('nullable')) {
-      return jsonSchema['nullable'] as bool?;
-    }
-    // If property is required, it cannot be null
-    if (isRequired) {
-      return false;
-    }
-    // Otherwise, let Gemini use its default
-    return null;
-  }
-
-  static gemini.SchemaType _getSchemaType(
-    String? typeString,
-  ) => switch (typeString?.toLowerCase()) {
-    'string' => gemini.SchemaType.string,
-    'number' => gemini.SchemaType.number,
-    'integer' => gemini.SchemaType.integer,
-    'boolean' => gemini.SchemaType.boolean,
-    'array' => gemini.SchemaType.array,
-    'object' => gemini.SchemaType.object,
-    _ => gemini.SchemaType.object, // Default to object if type is not specified
-  };
-
-  /// for use by tests only
-  static Iterable<gemini.Tool> toolsFrom(Iterable<Tool> tools) {
-    final result = <gemini.Tool>[];
-
-    for (final tool in tools) {
-      // Convert inputSchema to a Schema object using the existing method
-      final parameters =
-          tool.inputSchema != null
-              ? _geminiSchemaFrom(tool.inputSchema!)
-              : gemini.Schema.object(properties: {});
-
-      // Create a function declaration for the tool
-      final functionDeclaration = gemini.FunctionDeclaration(
-        tool.name,
-        tool.description ?? '',
-        parameters,
-      );
-
-      // Add the tool with its function declaration
-      result.add(gemini.Tool(functionDeclarations: [functionDeclaration]));
+    // Add the current prompt
+    final attachmentText = _extractAttachmentText(attachments);
+    final fullPrompt = attachmentText.isEmpty
+        ? prompt
+        : '$prompt $attachmentText';
+    if (fullPrompt.isNotEmpty) {
+      result.add(ChatMessage.humanText(fullPrompt));
     }
 
     return result;
   }
 
-  static Iterable<gemini.Content> _geminiHistoryFrom(
-    Iterable<Message> messages,
+  /// Extract text content from message parts
+  String _extractTextContent(Iterable<Part> parts) {
+    final textParts = <String>[];
+    for (final part in parts) {
+      if (part is TextPart) {
+        textParts.add(part.text);
+      } else if (part is LinkPart) {
+        textParts.add('[Link: ${part.url}]');
+      } else if (part is DataPart) {
+        textParts.add('[Media: ${part.mimeType}]');
+      }
+      // Note: Tool parts are handled separately for tool calling
+    }
+    return textParts.join(' ');
+  }
+
+  /// Extract text representation of attachments
+  String _extractAttachmentText(Iterable<Part> attachments) {
+    final attachmentTexts = <String>[];
+    for (final part in attachments) {
+      if (part is TextPart) {
+        attachmentTexts.add(part.text);
+      } else if (part is LinkPart) {
+        attachmentTexts.add('[Attachment: ${part.url}]');
+      } else if (part is DataPart) {
+        attachmentTexts.add('[Attachment: ${part.mimeType}]');
+      }
+    }
+    return attachmentTexts.join(' ');
+  }
+
+  /// Build message history for response
+  List<Message> _buildMessageHistory(
+    Iterable<Message> previousMessages, 
+    String prompt,
+    [String? aiResponse]
   ) {
-    // Gemini Content with system role is not supported; remove initial system
-    // message if present.
-    final filtered =
-        messages.isNotEmpty && messages.first.role == MessageRole.system
-            ? messages.skip(1)
-            : messages;
-    final history = [for (final m in filtered) m.geminiContent];
-
-    assert(
-      history.length == filtered.length,
-      'Output Content list length (${history.length}) does not match input '
-      'Message list length (${filtered.length})',
-    );
-
-    return history;
-  }
-
-  static Iterable<Message> _messagesFrom(Iterable<gemini.Content> history) {
-    final toolCallIdQueue = <String, List<String>>{};
-    final messages = [
-      for (final content in history)
-        content.toMessageWithToolIdQueue(toolCallIdQueue),
-    ];
-    assert(
-      messages.length == history.length,
-      'Output Message list length (${messages.length}) does not match input '
-      'Content list length (${history.length})',
-    );
-    return messages;
+    final result = <Message>[...previousMessages];
+    result.add(Message.user([TextPart(prompt)]));
+    if (aiResponse != null && aiResponse.isNotEmpty) {
+      result.add(Message.model([TextPart(aiResponse)]));
+    }
+    return result;
   }
 
   @override
   final Set<ProviderCaps> caps = ProviderCaps.all;
-}
-
-extension on String? {
-  MessageRole get messageRole => switch (this) {
-    'user' || null => MessageRole.user,
-    'model' => MessageRole.model,
-    'system' => MessageRole.system,
-    _ => MessageRole.user,
-  };
-}
-
-extension on MessageRole {
-  String get geminiRole => switch (this) {
-    MessageRole.user => 'user',
-    MessageRole.model => 'model',
-    MessageRole.system => 'system',
-  };
-}
-
-extension on gemini.Content {
-  /// Converts Gemini content to a Message, ensuring each FunctionCall gets a
-  /// unique ID, and the corresponding FunctionResponse uses the same ID. IDs
-  /// are not reused.
-  Message toMessageWithToolIdQueue(Map<String, List<String>> toolCallIdQueue) {
-    final role = this.role.messageRole;
-    final parts = <Part>[];
-    for (final part in this.parts) {
-      if (part is gemini.FunctionCall) {
-        final callKey = part.name; // Use only the function name
-        // Always generate a new unique ID for each call
-        final id = const Uuid().v4();
-        toolCallIdQueue.putIfAbsent(callKey, () => <String>[]).add(id);
-        final argsMap = Map<String, dynamic>.from(
-          (part.args as Map).map((k, v) => MapEntry(k as String, v)),
-        );
-        parts.add(
-          ToolPart(
-            kind: ToolPartKind.call,
-            id: id,
-            name: part.name,
-            arguments: argsMap,
-          ),
-        );
-      } else if (part is gemini.FunctionResponse) {
-        // Match to the oldest outstanding call with the same name (FIFO)
-        var id = '';
-        final callKey = part.name; // Use only the function name
-        final queue = toolCallIdQueue[callKey];
-        if (queue != null && queue.isNotEmpty) {
-          id = queue.removeAt(0);
-        } else {
-          throw StateError(
-            'No outstanding tool call to match FunctionResponse for function: '
-            '$callKey',
-          );
-        }
-        Map<String, dynamic> resultMap;
-        if (part.response == null) {
-          resultMap = <String, dynamic>{};
-        } else if (part.response is Map) {
-          resultMap = Map<String, dynamic>.from(
-            (part.response! as Map).map((k, v) => MapEntry(k as String, v)),
-          );
-        } else {
-          resultMap = <String, dynamic>{};
-        }
-        parts.add(
-          ToolPart(
-            kind: ToolPartKind.result,
-            id: id,
-            name: part.name,
-            result: resultMap,
-          ),
-        );
-      } else if (part is gemini.TextPart) {
-        parts.add(TextPart(part.text));
-      } else if (part is gemini.DataPart) {
-        parts.add(DataPart(part.bytes, mimeType: part.mimeType));
-      } else if (part is gemini.FilePart) {
-        parts.add(LinkPart(part.uri));
-      } else {
-        assert(false, 'Unhandled part type: ${part.runtimeType}, value: $part');
-      }
-    }
-
-    assert(
-      parts.length == this.parts.length,
-      'Output parts length (${parts.length}) does not match input '
-      'Content parts length (${this.parts.length})',
-    );
-
-    return Message(role: role, parts: parts);
-  }
-}
-
-extension on Message {
-  gemini.Content get geminiContent {
-    final parts = [
-      for (final p in this.parts)
-        switch (p) {
-          TextPart() => gemini.TextPart(p.text),
-          DataPart() => gemini.DataPart(p.mimeType, p.bytes),
-          ToolPart() => switch (p.kind) {
-            ToolPartKind.call => gemini.FunctionCall(p.name, p.arguments),
-            ToolPartKind.result => gemini.FunctionResponse(p.name, p.result),
-          },
-          LinkPart() => gemini.FilePart(p.url),
-        },
-    ];
-
-    assert(
-      parts.length == this.parts.length,
-      'Output gemini parts length (${parts.length}) does not match input '
-      'Message content length (${this.parts.length})',
-    );
-
-    return gemini.Content(role.geminiRole, parts);
-  }
 }

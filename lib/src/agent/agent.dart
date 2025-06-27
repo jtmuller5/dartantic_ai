@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
@@ -22,6 +23,7 @@ export 'agent_response.dart';
 export 'embedding_type.dart';
 export 'tool.dart';
 
+
 /// An agent that can run prompts through an AI model and return responses.
 ///
 /// This class provides a unified interface for interacting with different
@@ -44,8 +46,6 @@ class Agent {
   /// - [tools]: (Optional) A collection of [Tool]s the agent can use.
   /// - [embeddingModel]: (Optional) The model name to use for embeddings. If
   ///   not provided, uses the provider's default embedding model.
-  /// - [toolCallingMode]: (Optional) The mode in which the model will call
-  ///   tools.
   factory Agent(
     String model, {
     String? embeddingModel,
@@ -55,7 +55,6 @@ class Agent {
     JsonSchema? outputSchema,
     dynamic Function(Map<String, dynamic> json)? outputFromJson,
     Iterable<Tool>? tools,
-    ToolCallingMode? toolCallingMode,
     double? temperature,
   }) => Agent.provider(
     providerFor(
@@ -69,7 +68,6 @@ class Agent {
     outputSchema: outputSchema,
     outputFromJson: outputFromJson,
     tools: tools,
-    toolCallingMode: toolCallingMode,
   );
 
   /// Creates a new [Agent] with the given [provider].
@@ -81,25 +79,24 @@ class Agent {
   /// - [outputFromJson]: (Optional) A function to convert JSON output to a
   ///   typed object.
   /// - [tools]: (Optional) A collection of [Tool]s the agent can use.
-  /// - [toolCallingMode]: (Optional) The mode in which the model will call
-  ///   tools.
   Agent.provider(
     Provider provider, {
     String? systemPrompt,
     JsonSchema? outputSchema,
     this.outputFromJson,
     Iterable<Tool>? tools,
-    ToolCallingMode? toolCallingMode,
     double? temperature,
   }) : _provider = provider,
        _systemPrompt = systemPrompt,
+       _tools = tools,
+       _temperature = temperature,
+       _outputSchema = outputSchema,
        _model = provider.createModel(
          ModelSettings(
            systemPrompt: systemPrompt,
            outputSchema: outputSchema,
            tools: tools,
            caps: provider.caps,
-           toolCallingMode: toolCallingMode,
            temperature: temperature,
          ),
        ) {
@@ -115,13 +112,16 @@ class Agent {
   /// Example:
   /// ```dart
   /// Agent.environment['OPENAI_API_KEY'] = 'your_api_key';
-  /// final agent = Agent('openai'); // no explicit apiKey needed!
+  /// final agent = Agent('openai');
   /// ```
-  static final Map<String, String> environment = {};
+  static final Map<String, String> environment = <String, String>{};
 
   final Provider _provider;
   final Model _model;
   final String? _systemPrompt;
+  final Iterable<Tool>? _tools;
+  final double? _temperature;
+  final JsonSchema? _outputSchema;
 
   /// Returns the model used by this agent in the format:
   ///   providerName:generativeModelName, e.g.
@@ -156,6 +156,7 @@ class Agent {
   ///
   /// This method processes the prompt through the model, collects the output
   /// from the resulting stream, and returns it as a single [AgentResponse].
+  /// Uses langchain wrapper when available for enhanced prompt execution.
   ///
   /// - [prompt]: The input string to be processed by the model.
   ///
@@ -186,19 +187,27 @@ class Agent {
   /// stream.
   ///
   /// Returns a [Stream] of [AgentResponse] containing the raw string output.
+  /// Delegates to Langchain wrapper when available for enhanced
+  /// prompt execution.
   Stream<AgentResponse> runStream(
     String prompt, {
     Iterable<Message> messages = const [],
     Iterable<Part> attachments = const [],
   }) async* {
+    // Ensure system prompt is added to messages
+    final effectiveMessages = _ensureSystemPromptMessage(messages);
+    
     await for (final chunk in _model.runStream(
       prompt: prompt,
-      messages: messages,
+      messages: effectiveMessages,
       attachments: attachments,
     )) {
+      // Ensure system prompt in response messages
+      final responseMessages = _ensureSystemPromptMessage(chunk.messages);
+          
       yield AgentResponse(
         output: chunk.output,
-        messages: _ensureSystemPromptMessage(chunk.messages),
+        messages: responseMessages,
       );
     }
   }
@@ -208,6 +217,13 @@ class Agent {
   /// Returns an [AgentResponseFor<T>] containing the output converted to type
   /// [T]. Uses [outputFromJson] to convert the JSON response if provided,
   /// otherwise returns the decoded JSON.
+  ///
+  /// This method includes rigorous JSON schema validation and error handling:
+  /// - Validates the response is valid JSON
+  /// - Validates against the provided JSON schema (if any)
+  /// - Applies type conversion using outputFromJson (if provided)
+  /// - Handles both LangChain and direct model execution responses
+  /// - Provides detailed error messages for validation failures
   Future<AgentResponseFor<T>> runFor<T>(
     String prompt, {
     Iterable<Message> messages = const [],
@@ -219,9 +235,7 @@ class Agent {
       attachments: attachments,
     );
 
-    final outputJson = jsonDecode(response.output);
-    final typedOutput = outputFromJson?.call(outputJson) ?? outputJson;
-    return AgentResponseFor(output: typedOutput, messages: response.messages);
+    return _parseTypedResponse<T>(response);
   }
 
   /// Executes a given [DotPrompt] and returns the complete response.
@@ -537,4 +551,303 @@ class Agent {
 
   /// Lists all available models from this provider.
   Future<Iterable<ModelInfo>> listModels() => _provider.listModels();
+
+  /// Parses and validates a typed response from the model output.
+  ///
+  /// This method provides rigorous JSON schema validation and error handling:
+  /// - Extracts JSON from response (handles both pure JSON and mixed content)
+  /// - Validates JSON syntax and structure
+  /// - Validates against the provided JSON schema (if configured)
+  /// - Applies type conversion using outputFromJson (if provided)
+  /// - Falls back to original parsing behavior for backwards compatibility
+  /// - Provides detailed error messages for validation failures
+  ///
+  /// Returns an [AgentResponseFor<T>] containing the validated and typed output.
+  AgentResponseFor<T> _parseTypedResponse<T>(AgentResponse response) {
+    // Try rigorous JSON extraction and parsing first
+    try {
+      return _parseTypedResponseRigorous<T>(response);
+    } on FormatException catch (rigorousError) {
+      // If rigorous parsing fails, try the original simpler approach
+      // for backwards compatibility with existing tests and model configurations
+      try {
+        return _parseTypedResponseLegacy<T>(response);
+      } on FormatException {
+        // If both approaches fail, report the more detailed error from rigorous parsing
+        throw rigorousError;
+      } catch (legacyError) {
+        // If legacy parsing fails with a different error, report both
+        throw FormatException(
+          'Both rigorous and legacy JSON parsing failed.\n'
+          'Rigorous parsing error: $rigorousError\n'
+          'Legacy parsing error: $legacyError\n'
+          'Response: "${response.output}"',
+        );
+      }
+    }
+  }
+  
+  /// Rigorous JSON parsing with enhanced validation and extraction.
+  AgentResponseFor<T> _parseTypedResponseRigorous<T>(AgentResponse response) {
+    // Extract JSON from the response output
+    final jsonString = _extractJsonFromResponse(response.output);
+    
+    // Parse JSON with detailed error handling
+    final Map<String, dynamic> parsedJson;
+    try {
+      final decoded = jsonDecode(jsonString);
+      if (decoded is! Map<String, dynamic>) {
+        throw FormatException(
+          'Expected JSON object, but got ${decoded.runtimeType}: $decoded',
+        );
+      }
+      parsedJson = decoded;
+    } on FormatException catch (e) {
+      throw FormatException(
+        'Invalid JSON in model response: ${e.message}\n'
+        'Raw response: "${response.output}"\n'
+        'Extracted JSON: "$jsonString"',
+      );
+    } catch (e) {
+      throw FormatException(
+        'Failed to parse JSON from model response: $e\n'
+        'Raw response: "${response.output}"\n'
+        'Extracted JSON: "$jsonString"',
+      );
+    }
+    
+    // Validate against JSON schema if provided
+    _validateJsonSchema(parsedJson);
+    
+    // Convert to typed output
+    return _convertJsonToTypedOutput<T>(parsedJson, response.messages);
+  }
+  
+  /// Legacy JSON parsing for backwards compatibility.
+  /// 
+  /// This maintains the original simple behavior for cases where models
+  /// might not be properly configured for JSON schema responses.
+  AgentResponseFor<T> _parseTypedResponseLegacy<T>(AgentResponse response) {
+    // Original simple approach: try to decode response directly as JSON
+    final Map<String, dynamic> parsedJson;
+    try {
+      final decoded = jsonDecode(response.output);
+      if (decoded is! Map<String, dynamic>) {
+        throw FormatException(
+          'Expected JSON object, but got ${decoded.runtimeType}: $decoded',
+        );
+      }
+      parsedJson = decoded;
+    } catch (e) {
+      throw FormatException(
+        'Legacy JSON parsing failed - response is not valid JSON: $e\n'
+        'Response: "${response.output}"',
+      );
+    }
+    
+    // Validate against JSON schema if provided (still do validation)
+    _validateJsonSchema(parsedJson);
+    
+    // Convert to typed output
+    return _convertJsonToTypedOutput<T>(parsedJson, response.messages);
+  }
+  
+  /// Converts parsed JSON to typed output with proper error handling.
+  AgentResponseFor<T> _convertJsonToTypedOutput<T>(
+    Map<String, dynamic> parsedJson,
+    List<Message> messages,
+  ) {
+    final T typedOutput;
+    try {
+      if (outputFromJson != null) {
+        // Use custom conversion function
+        final converted = outputFromJson!(parsedJson);
+        if (converted is! T) {
+          throw FormatException(
+            'Custom conversion function returned ${converted.runtimeType}, '
+            'but expected type $T',
+          );
+        }
+        typedOutput = converted;
+      } else {
+        // Direct assignment with type checking
+        if (parsedJson is T) {
+          typedOutput = parsedJson as T;
+        } else {
+          throw FormatException(
+            'Cannot convert ${parsedJson.runtimeType} to $T. '
+            'JSON: $parsedJson\n'
+            'Consider providing an outputFromJson function for custom type conversion.',
+          );
+        }
+      }
+    } catch (e) {
+      if (e is FormatException) {
+        rethrow;
+      }
+      throw FormatException(
+        'Error during type conversion: $e\n'
+        'JSON: $parsedJson\n'
+        'Target type: $T',
+      );
+    }
+    
+    return AgentResponseFor<T>(
+      output: typedOutput,
+      messages: messages,
+    );
+  }
+  
+  /// Extracts JSON content from a model response that may contain mixed content.
+  ///
+  /// This handles various response formats:
+  /// - Pure JSON responses
+  /// - JSON wrapped in markdown code blocks
+  /// - JSON mixed with explanatory text
+  /// - Multiple JSON objects (returns the first valid one)
+  /// - Falls back to original parsing for backwards compatibility
+  String _extractJsonFromResponse(String responseOutput) {
+    if (responseOutput.trim().isEmpty) {
+      throw const FormatException('Empty response from model');
+    }
+    
+    final trimmed = responseOutput.trim();
+    
+    // Case 1: Response is already pure JSON
+    if (_isValidJsonStart(trimmed)) {
+      try {
+        jsonDecode(trimmed); // Validate it's actually valid JSON
+        return trimmed;
+      } catch (_) {
+        // Fall through to other extraction methods
+      }
+    }
+    
+    // Case 2: JSON in markdown code blocks
+    final codeBlockPattern = RegExp(
+      r'```(?:json)?\s*([\s\S]*?)```',
+      caseSensitive: false,
+    );
+    final codeBlockMatch = codeBlockPattern.firstMatch(trimmed);
+    if (codeBlockMatch != null) {
+      final extracted = codeBlockMatch.group(1)?.trim() ?? '';
+      if (_isValidJsonStart(extracted)) {
+        try {
+          jsonDecode(extracted);
+          return extracted;
+        } catch (_) {
+          // Continue to other extraction methods
+        }
+      }
+    }
+    
+    // Case 3: Find JSON objects in mixed content (improved pattern)
+    final jsonObjectPattern = RegExp(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}');
+    final matches = jsonObjectPattern.allMatches(trimmed);
+    
+    for (final match in matches) {
+      final candidate = match.group(0) ?? '';
+      if (_isValidJsonStart(candidate)) {
+        try {
+          jsonDecode(candidate);
+          return candidate;
+        } catch (_) {
+          // Continue to next match
+          continue;
+        }
+      }
+    }
+    
+    // Case 4: Look for JSON arrays
+    final jsonArrayPattern = RegExp(r'\[[\s\S]*?\]');
+    final arrayMatches = jsonArrayPattern.allMatches(trimmed);
+    
+    for (final match in arrayMatches) {
+      final candidate = match.group(0) ?? '';
+      if (candidate.trim().startsWith('[')) {
+        try {
+          jsonDecode(candidate);
+          return candidate;
+        } catch (_) {
+          // Continue to next match
+          continue;
+        }
+      }
+    }
+    
+    // Case 5: Try original simple JSON decode as last resort
+    // This maintains backwards compatibility with the original implementation
+    try {
+      jsonDecode(trimmed);
+      return trimmed;
+    } catch (_) {
+      // Not valid JSON, proceed to error
+    }
+    
+    // If all else fails, check if we should fall back to original behavior
+    // If there's no output schema configured, maybe this is expected to be
+    // plain text that should be parsed differently
+    if (_getOutputSchema() == null) {
+      throw FormatException(
+        'No output schema configured, but runFor<T>() requires JSON output. '
+        'Response: "$responseOutput"\n'
+        'Either configure an outputSchema or use run() for text responses.',
+      );
+    }
+    
+    throw FormatException(
+      'No valid JSON found in model response despite outputSchema configuration.\n'
+      'Response: "$responseOutput"\n'
+      'This might indicate the model is not respecting the JSON schema configuration. '
+      'Consider adding explicit instructions in the system prompt to return JSON only.',
+    );
+  }
+  
+  /// Checks if a string starts with valid JSON syntax.
+  bool _isValidJsonStart(String text) {
+    final trimmed = text.trim();
+    return trimmed.startsWith('{') || trimmed.startsWith('[');
+  }
+  
+  /// Validates a parsed JSON object against the configured JSON schema.
+  ///
+  /// Throws [FormatException] if validation fails with detailed error information.
+  void _validateJsonSchema(Map<String, dynamic> parsedJson) {
+    // Get the output schema from model settings
+    final schema = _getOutputSchema();
+    if (schema == null) {
+      // No schema configured, skip validation
+      return;
+    }
+    
+    try {
+      final validationResults = schema.validate(parsedJson);
+      if (!validationResults.isValid) {
+        final errors = validationResults.errors
+            .map((error) => '  - ${error.instancePath}: ${error.message}')
+            .join('\n');
+        
+        throw FormatException(
+          'JSON schema validation failed:\n'
+          '$errors\n'
+          'JSON: $parsedJson\n'
+          'Schema: ${schema.toJson()}',
+        );
+      }
+    } catch (e) {
+      if (e is FormatException) {
+        rethrow;
+      }
+      throw FormatException(
+        'Error during JSON schema validation: $e\n'
+        'JSON: $parsedJson\n'
+        'Schema: ${schema.toJson()}',
+      );
+    }
+  }
+  
+  /// Gets the output schema from the model settings.
+  ///
+  /// Returns null if no schema is configured.
+  JsonSchema? _getOutputSchema() => _outputSchema;
 }
