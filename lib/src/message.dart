@@ -44,7 +44,28 @@ class Message {
   Message({required this.role, required this.parts});
 
   /// Creates a [Message] from a raw JSON string.
-  factory Message.fromRawJson(String str) => Message.fromJson(json.decode(str));
+  /// 
+  /// Throws [FormatException] if the JSON string is malformed.
+  /// Throws [ArgumentError] if the decoded JSON is not a valid Map.
+  factory Message.fromRawJson(String str) {
+    try {
+      final decoded = json.decode(str);
+      if (decoded is! Map<String, dynamic>) {
+        throw ArgumentError.value(
+          str,
+          'str',
+          'JSON must decode to a Map<String, dynamic>, got ${decoded.runtimeType}',
+        );
+      }
+      return Message.fromJson(decoded);
+    } on FormatException catch (e) {
+      throw FormatException(
+        'Invalid JSON format for Message: ${e.message}',
+        str,
+        e.offset,
+      );
+    }
+  }
 
   /// Creates a [Message] from a JSON map.
   factory Message.fromJson(Map<String, dynamic> json) => Message(

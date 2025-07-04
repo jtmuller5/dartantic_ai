@@ -466,6 +466,12 @@ class Agent {
     final dot = dotProduct(a, b);
     final magnitudeA = _magnitude(a);
     final magnitudeB = _magnitude(b);
+    
+    // Handle zero magnitude vectors to prevent division by zero
+    if (magnitudeA == 0.0 || magnitudeB == 0.0) {
+      return 0.0; // Zero vectors are orthogonal to any other vector
+    }
+    
     return dot / (magnitudeA * magnitudeB); // Normalize by both magnitudes
   }
 
@@ -489,6 +495,12 @@ class Agent {
     assert(a.length == b.length);
     final dot = dotProduct(a, b);
     final magnitudeB = _magnitude(b);
+    
+    // Handle zero magnitude vectors to prevent division by zero
+    if (magnitudeA == 0.0 || magnitudeB == 0.0) {
+      return 0.0; // Zero vectors are orthogonal to any other vector
+    }
+    
     return dot / (magnitudeA * magnitudeB); // Normalize by both magnitudes
   }
 

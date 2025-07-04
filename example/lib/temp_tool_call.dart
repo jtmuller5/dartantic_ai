@@ -50,10 +50,24 @@ Future<Map<String, dynamic>> onTempCall(Map<String, dynamic> input) async {
   }
 
   // ignore: avoid_dynamic_calls
-  final lat = double.parse(geocodeData[0]['lat'] as String);
+  final latStr = geocodeData[0]['lat'] as String?;
+  if (latStr == null || latStr.isEmpty) {
+    throw Exception('Invalid latitude data from geocoding API');
+  }
+  final lat = double.tryParse(latStr);
+  if (lat == null) {
+    throw Exception('Could not parse latitude: $latStr');
+  }
 
   // ignore: avoid_dynamic_calls
-  final long = double.parse(geocodeData[0]['lon'] as String);
+  final longStr = geocodeData[0]['lon'] as String?;
+  if (longStr == null || longStr.isEmpty) {
+    throw Exception('Invalid longitude data from geocoding API');
+  }
+  final long = double.tryParse(longStr);
+  if (long == null) {
+    throw Exception('Could not parse longitude: $longStr');
+  }
 
   // Use Open-Meteo API for weather data given a latitude and longitude
   final weatherUrl = Uri.parse(
