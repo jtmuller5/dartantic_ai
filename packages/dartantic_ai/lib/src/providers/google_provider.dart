@@ -101,7 +101,7 @@ class GoogleProvider
   }
 
   @override
-  Stream<ModelInfo> listModels(http.Client? client) async* {
+  Stream<ModelInfo> listModels({http.Client? client}) async* {
     final apiKey = this.apiKey ?? getEnv(defaultApiKeyName);
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'models');

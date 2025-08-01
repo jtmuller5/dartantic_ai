@@ -86,7 +86,7 @@ class AnthropicProvider
   }) => throw Exception('Anthropic does not support embeddings models');
 
   @override
-  Stream<ModelInfo> listModels(http.Client? client,) async* {
+  Stream<ModelInfo> listModels({http.Client? client}) async* {
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'models');
     final response = await http.get(

@@ -89,7 +89,7 @@ class MistralProvider
   }
 
   @override
-  Stream<ModelInfo> listModels(http.Client? client) async* {
+  Stream<ModelInfo> listModels({http.Client? client}) async* {
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'models');
     _logger.info('Fetching models from Mistral API: $url');

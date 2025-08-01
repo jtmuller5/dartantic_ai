@@ -118,7 +118,7 @@ class OpenAIProvider
   }
 
   @override
-  Stream<ModelInfo> listModels(http.Client? client) async* {
+  Stream<ModelInfo> listModels({http.Client? client}) async* {
     _logger.info(
       'Fetching models from OpenAI API: ${baseUrl ?? 'null'}/models',
     );

@@ -102,7 +102,7 @@ class OllamaProvider
   }) => throw Exception('Ollama does not support embeddings models');
 
   @override
-  Stream<ModelInfo> listModels(http.Client? client,) async* {
+  Stream<ModelInfo> listModels({http.Client? client}) async* {
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'tags');
     _logger.info('Fetching models from Ollama API: $url');

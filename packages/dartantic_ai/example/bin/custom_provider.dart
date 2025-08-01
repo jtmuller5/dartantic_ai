@@ -4,6 +4,7 @@ import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
 import 'package:example/example.dart';
 import 'package:json_schema/json_schema.dart';
+import 'package:http/http.dart' as http;
 
 /// An example of how to add and use a custom provider.
 void main() async {
@@ -91,7 +92,7 @@ class EchoProvider extends Provider<ChatModelOptions, EmbeddingsModelOptions> {
   Set<ProviderCaps> get caps => {ProviderCaps.chat};
 
   @override
-  Stream<ModelInfo> listModels() => Stream.fromIterable([
+  Stream<ModelInfo> listModels({http.Client? client}) => Stream.fromIterable([
     ModelInfo(
       name: 'echo',
       providerName: 'echo',
@@ -105,6 +106,7 @@ class EchoProvider extends Provider<ChatModelOptions, EmbeddingsModelOptions> {
     List<Tool<Object>>? tools,
     double? temperature,
     ChatModelOptions? options,
+    http.Client? client,
   }) => EchoChatModel(
     name: name ?? defaultModelNames[ModelKind.chat]!,
     defaultOptions: options,
@@ -114,5 +116,6 @@ class EchoProvider extends Provider<ChatModelOptions, EmbeddingsModelOptions> {
   EmbeddingsModel<EmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
     EmbeddingsModelOptions? options,
+    http.Client? client,
   }) => throw Exception('no support for embeddings models in this provider');
 }

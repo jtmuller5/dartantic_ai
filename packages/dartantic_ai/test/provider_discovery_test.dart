@@ -12,6 +12,7 @@
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
 void main() {

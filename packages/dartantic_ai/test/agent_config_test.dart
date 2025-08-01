@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dartantic_ai/src/platform/platform.dart' as platform;
 import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:http/http.dart' as http;
 import 'package:json_schema/json_schema.dart';
 import 'package:test/test.dart';
 
@@ -566,6 +567,7 @@ class TestProvider extends Provider<TestChatOptions, TestEmbeddingsOptions> {
     List<Tool>? tools,
     double? temperature,
     TestChatOptions? options,
+    http.Client? client,
   }) {
     // Provider resolves API key if it has an apiKeyName
     final resolvedApiKey =
@@ -579,12 +581,13 @@ class TestProvider extends Provider<TestChatOptions, TestEmbeddingsOptions> {
   }
 
   @override
-  Stream<ModelInfo> listModels() => const Stream.empty();
+  Stream<ModelInfo> listModels({http.Client? client}) => const Stream.empty();
 
   @override
   EmbeddingsModel<TestEmbeddingsOptions> createEmbeddingsModel({
     String? name,
     TestEmbeddingsOptions? options,
+    http.Client? client,
   }) {
     throw UnsupportedError('Test provider does not support embeddings');
   }

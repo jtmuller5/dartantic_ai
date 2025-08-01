@@ -86,7 +86,7 @@ class CohereProvider extends OpenAIProvider {
   }
 
   @override
-  Stream<ModelInfo> listModels(http.Client? client) async* {
+  Stream<ModelInfo> listModels({http.Client? client}) async* {
     final url = Uri.parse('https://docs.cohere.com/docs/models');
     _logger.info('Fetching models from Cohere docs: $url');
     final response = await http.get(url);
