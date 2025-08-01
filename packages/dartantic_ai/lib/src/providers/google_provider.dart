@@ -15,8 +15,7 @@ class GoogleProvider
   /// Creates a new Google AI provider instance.
   ///
   /// [apiKey]: The API key to use for the Google AI API.
-  /// [client]: The HTTP client to use for API requests. If not provided, a default client will be used.
-  GoogleProvider({String? apiKey, http.Client? super.client})
+  GoogleProvider({String? apiKey})
     : super(
         apiKey: apiKey ?? getEnv(defaultApiKeyName),
         apiKeyName: defaultApiKeyName,
@@ -53,6 +52,7 @@ class GoogleProvider
     List<Tool>? tools,
     double? temperature,
     GoogleChatModelOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
 
@@ -87,6 +87,7 @@ class GoogleProvider
   EmbeddingsModel<GoogleEmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
     GoogleEmbeddingsModelOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.embeddings]!;
     _logger.info('Creating Google model: $modelName');
@@ -100,7 +101,7 @@ class GoogleProvider
   }
 
   @override
-  Stream<ModelInfo> listModels() async* {
+  Stream<ModelInfo> listModels(http.Client? client) async* {
     final apiKey = this.apiKey ?? getEnv(defaultApiKeyName);
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'models');

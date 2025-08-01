@@ -14,7 +14,7 @@ class AnthropicProvider
   /// Creates a new Anthropic provider instance.
   ///
   /// [apiKey]: The API key to use for the Anthropic API.
-  AnthropicProvider({String? apiKey, http.Client? super.client})
+  AnthropicProvider({String? apiKey})
     : super(
         apiKey:
             apiKey ??
@@ -51,6 +51,7 @@ class AnthropicProvider
     List<Tool>? tools,
     double? temperature,
     AnthropicChatOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
 
@@ -81,10 +82,11 @@ class AnthropicProvider
   EmbeddingsModel<EmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
     EmbeddingsModelOptions? options,
+    http.Client? client,
   }) => throw Exception('Anthropic does not support embeddings models');
 
   @override
-  Stream<ModelInfo> listModels() async* {
+  Stream<ModelInfo> listModels(http.Client? client,) async* {
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'models');
     final response = await http.get(

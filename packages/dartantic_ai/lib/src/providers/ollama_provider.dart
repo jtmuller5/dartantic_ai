@@ -11,7 +11,7 @@ import '../chat_models/ollama_chat/ollama_chat_model.dart';
 class OllamaProvider
     extends Provider<OllamaChatOptions, EmbeddingsModelOptions> {
   /// Creates a new Ollama provider instance.
-  OllamaProvider({http.Client? super.client})
+  OllamaProvider()
     : super(
         name: 'ollama',
         displayName: 'Ollama',
@@ -44,6 +44,7 @@ class OllamaProvider
     List<Tool>? tools,
     double? temperature,
     OllamaChatOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
     _logger.info(
@@ -97,10 +98,11 @@ class OllamaProvider
   EmbeddingsModel<EmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
     EmbeddingsModelOptions? options,
+    http.Client? client,
   }) => throw Exception('Ollama does not support embeddings models');
 
   @override
-  Stream<ModelInfo> listModels() async* {
+  Stream<ModelInfo> listModels(http.Client? client,) async* {
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'tags');
     _logger.info('Fetching models from Ollama API: $url');

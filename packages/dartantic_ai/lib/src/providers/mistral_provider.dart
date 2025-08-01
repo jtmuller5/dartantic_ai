@@ -16,7 +16,7 @@ class MistralProvider
   /// Creates a new Mistral provider instance.
   ///
   /// [apiKey]: The API key for the Mistral provider.
-  MistralProvider({String? apiKey, http.Client? super.client})
+  MistralProvider({String? apiKey})
     : super(
         apiKey: apiKey ?? getEnv(defaultApiKeyName),
         name: 'mistral',
@@ -48,6 +48,7 @@ class MistralProvider
     List<Tool>? tools,
     double? temperature,
     MistralChatModelOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
     _logger.info(
@@ -75,6 +76,7 @@ class MistralProvider
   EmbeddingsModel<MistralEmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
     MistralEmbeddingsModelOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.embeddings]!;
     _logger.info('Creating Mistral embeddings model: $modelName');
@@ -87,7 +89,7 @@ class MistralProvider
   }
 
   @override
-  Stream<ModelInfo> listModels() async* {
+  Stream<ModelInfo> listModels(http.Client? client) async* {
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'models');
     _logger.info('Fetching models from Mistral API: $url');

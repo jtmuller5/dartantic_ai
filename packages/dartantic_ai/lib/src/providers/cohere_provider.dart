@@ -14,7 +14,7 @@ class CohereProvider extends OpenAIProvider {
   /// Creates a new Cohere OpenAI provider instance.
   ///
   /// [apiKey]: The API key for the Cohere provider.
-  CohereProvider({String? apiKey, http.Client? super.client})
+  CohereProvider({String? apiKey})
     : super(
         apiKey: apiKey ?? getEnv(defaultApiKeyName),
         apiKeyName: defaultApiKeyName,
@@ -51,6 +51,7 @@ class CohereProvider extends OpenAIProvider {
     List<Tool>? tools,
     double? temperature,
     CohereChatOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
     _logger.info(
@@ -64,6 +65,7 @@ class CohereProvider extends OpenAIProvider {
       temperature: temperature,
       apiKey: apiKey ?? tryGetEnv(apiKeyName),
       baseUrl: baseUrl,
+      client: client,
       defaultOptions: CohereChatOptions(
         frequencyPenalty: options?.frequencyPenalty,
         logitBias: options?.logitBias,
@@ -84,7 +86,7 @@ class CohereProvider extends OpenAIProvider {
   }
 
   @override
-  Stream<ModelInfo> listModels() async* {
+  Stream<ModelInfo> listModels(http.Client? client) async* {
     final url = Uri.parse('https://docs.cohere.com/docs/models');
     _logger.info('Fetching models from Cohere docs: $url');
     final response = await http.get(url);

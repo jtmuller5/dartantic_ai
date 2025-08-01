@@ -20,7 +20,6 @@ class OpenAIProvider
   /// - [displayName]: Human-readable name for display.
   /// - [defaultModelNames]: The default model for this provider.
   /// - [baseUrl]: The default API endpoint.
-  /// - [client]: The HTTP client to use for API requests.
   /// - [apiKeyName]: The environment variable for the API key (if any).
   /// - [apiKey]: The API key for the OpenAI provider
   OpenAIProvider({
@@ -40,7 +39,6 @@ class OpenAIProvider
       ProviderCaps.vision,
     },
     super.baseUrl,
-    super.client,
     super.apiKeyName = 'OPENAI_API_KEY',
     super.aliases,
   }) : super(apiKey: apiKey ?? tryGetEnv(apiKeyName));
@@ -59,6 +57,7 @@ class OpenAIProvider
     List<Tool>? tools,
     double? temperature,
     OpenAIChatOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.chat]!;
 
@@ -74,6 +73,7 @@ class OpenAIProvider
       temperature: temperature,
       apiKey: apiKey ?? tryGetEnv(apiKeyName),
       baseUrl: baseUrl,
+      client: client,
       defaultOptions: OpenAIChatOptions(
         temperature: temperature ?? options?.temperature,
         topP: options?.topP,
@@ -97,6 +97,7 @@ class OpenAIProvider
   EmbeddingsModel<OpenAIEmbeddingsModelOptions> createEmbeddingsModel({
     String? name,
     OpenAIEmbeddingsModelOptions? options,
+    http.Client? client,
   }) {
     final modelName = name ?? defaultModelNames[ModelKind.embeddings]!;
 
@@ -117,7 +118,7 @@ class OpenAIProvider
   }
 
   @override
-  Stream<ModelInfo> listModels() async* {
+  Stream<ModelInfo> listModels(http.Client? client) async* {
     _logger.info(
       'Fetching models from OpenAI API: ${baseUrl ?? 'null'}/models',
     );

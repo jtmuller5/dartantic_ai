@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dartantic_interface/dartantic_interface.dart';
+import 'package:http/http.dart' as http;
 import 'package:json_schema/json_schema.dart';
 import 'package:logging/logging.dart';
 
@@ -84,6 +85,7 @@ class Agent {
     String? displayName,
     this.chatModelOptions,
     this.embeddingsModelOptions,
+    http.Client? client,
   }) {
     _logger.info(
       'Creating agent from provider: ${provider.name}, '
@@ -102,6 +104,8 @@ class Agent {
 
     _tools = tools;
     _temperature = temperature;
+
+    _client = client;
 
     _logger.fine(
       'Agent created from provider with ${tools?.length ?? 0} tools, '
@@ -145,6 +149,7 @@ class Agent {
   late final List<Tool>? _tools;
   late final double? _temperature;
   late final String? _displayName;
+  late final http.Client? _client;
 
   static final Logger _logger = Logger('dartantic.chat_agent');
 
@@ -280,6 +285,7 @@ class Agent {
       tools: tools,
       temperature: _temperature,
       options: chatModelOptions,
+      client: _client,
     );
 
     try {
