@@ -1,3 +1,4 @@
+import 'package:http/http.dart' as http;
 import '../chat/chat_model.dart';
 import '../chat/chat_model_options.dart';
 import '../embeddings/embeddings_model.dart';
@@ -31,6 +32,7 @@ abstract class Provider<
   /// - [defaultModelNames]: The default model for this provider (null means use
   ///   model's own default).
   /// - [baseUrl]: The default API endpoint.
+  /// - [client]: The HTTP client to use for API requests.
   /// - [apiKeyName]: The environment variable for the API key (if any).
   /// - [aliases]: Alternative names for lookup.
   const Provider({
@@ -40,6 +42,7 @@ abstract class Provider<
     required this.caps,
     this.apiKey,
     this.baseUrl,
+    this.client,
     this.apiKeyName,
     this.aliases = const [],
   });
@@ -61,6 +64,9 @@ abstract class Provider<
 
   /// The default API endpoint for this provider.
   final Uri? baseUrl;
+
+  /// The HTTP client to use for API requests.
+  final http.Client? client;
 
   /// The environment variable for the API key (if any).
   final String? apiKeyName;

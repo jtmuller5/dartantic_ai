@@ -11,7 +11,7 @@ import '../chat_models/ollama_chat/ollama_chat_model.dart';
 class OllamaProvider
     extends Provider<OllamaChatOptions, EmbeddingsModelOptions> {
   /// Creates a new Ollama provider instance.
-  OllamaProvider()
+  OllamaProvider({http.Client? super.client})
     : super(
         name: 'ollama',
         displayName: 'Ollama',
@@ -56,6 +56,7 @@ class OllamaProvider
       tools: tools,
       temperature: temperature,
       baseUrl: baseUrl,
+      client: client,
       defaultOptions: OllamaChatOptions(
         format: options?.format,
         keepAlive: options?.keepAlive,

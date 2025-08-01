@@ -15,7 +15,8 @@ class GoogleProvider
   /// Creates a new Google AI provider instance.
   ///
   /// [apiKey]: The API key to use for the Google AI API.
-  GoogleProvider({String? apiKey})
+  /// [client]: The HTTP client to use for API requests. If not provided, a default client will be used.
+  GoogleProvider({String? apiKey, http.Client? super.client})
     : super(
         apiKey: apiKey ?? getEnv(defaultApiKeyName),
         apiKeyName: defaultApiKeyName,
@@ -66,6 +67,7 @@ class GoogleProvider
       tools: tools,
       temperature: temperature,
       apiKey: apiKey!,
+      client: client,
       defaultOptions: GoogleChatModelOptions(
         topP: options?.topP,
         topK: options?.topK,
@@ -92,6 +94,7 @@ class GoogleProvider
       name: modelName,
       apiKey: apiKey!,
       baseUrl: baseUrl,
+      client: client,
       options: options,
     );
   }
@@ -102,7 +105,13 @@ class GoogleProvider
     final resolvedBaseUrl = baseUrl ?? defaultBaseUrl;
     final url = appendPath(resolvedBaseUrl, 'models');
     _logger.info('Fetching models from Google API: $url');
-    final response = await http.get(url, headers: {'x-goog-api-key': apiKey});
+
+    final httpClient = client ?? http.Client();
+    final response = await httpClient.get(
+      url,
+      headers: {'x-goog-api-key': apiKey},
+    );
+
     if (response.statusCode != 200) {
       _logger.warning(
         'Failed to fetch models: HTTP ${response.statusCode}, '

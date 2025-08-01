@@ -20,6 +20,7 @@ class OpenAIProvider
   /// - [displayName]: Human-readable name for display.
   /// - [defaultModelNames]: The default model for this provider.
   /// - [baseUrl]: The default API endpoint.
+  /// - [client]: The HTTP client to use for API requests.
   /// - [apiKeyName]: The environment variable for the API key (if any).
   /// - [apiKey]: The API key for the OpenAI provider
   OpenAIProvider({
@@ -39,6 +40,7 @@ class OpenAIProvider
       ProviderCaps.vision,
     },
     super.baseUrl,
+    super.client,
     super.apiKeyName = 'OPENAI_API_KEY',
     super.aliases,
   }) : super(apiKey: apiKey ?? tryGetEnv(apiKeyName));

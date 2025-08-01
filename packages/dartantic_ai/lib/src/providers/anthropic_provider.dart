@@ -14,7 +14,7 @@ class AnthropicProvider
   /// Creates a new Anthropic provider instance.
   ///
   /// [apiKey]: The API key to use for the Anthropic API.
-  AnthropicProvider({String? apiKey})
+  AnthropicProvider({String? apiKey, http.Client? super.client})
     : super(
         apiKey:
             apiKey ??
@@ -36,6 +36,7 @@ class AnthropicProvider
       );
 
   static final Logger _logger = Logger('dartantic.chat.providers.anthropic');
+
   static const _defaultApiTestKeyName = 'ANTHROPIC_API_TEST_KEY';
 
   /// The default base URL to use unless another is specified.
@@ -64,6 +65,7 @@ class AnthropicProvider
       temperature: temperature,
       apiKey: apiKey!,
       baseUrl: baseUrl,
+      client: client,
       defaultOptions: AnthropicChatOptions(
         temperature: temperature ?? options?.temperature,
         topP: options?.topP,

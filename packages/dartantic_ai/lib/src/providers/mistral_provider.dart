@@ -16,7 +16,7 @@ class MistralProvider
   /// Creates a new Mistral provider instance.
   ///
   /// [apiKey]: The API key for the Mistral provider.
-  MistralProvider({String? apiKey})
+  MistralProvider({String? apiKey, http.Client? super.client})
     : super(
         apiKey: apiKey ?? getEnv(defaultApiKeyName),
         name: 'mistral',
@@ -60,6 +60,7 @@ class MistralProvider
       tools: tools,
       temperature: temperature,
       apiKey: apiKey!,
+      client: client,
       baseUrl: baseUrl,
       defaultOptions: MistralChatModelOptions(
         topP: options?.topP,
